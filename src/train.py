@@ -115,8 +115,13 @@ def run_train(cfg: DictConfig) -> Dict[str, Any]:
     pl.seed_everything(cfg.seed, workers=True)
 
     # --- Instantiate components ------------------------------------------
-    datamodule: pl.LightningDataModule = hydra.utils.instantiate(cfg.dataset)
-    model: pl.LightningModule = hydra.utils.instantiate(cfg.method)
+    # _convert_="all" tells Hydra to convert every OmegaConf container
+    # (ListConfig, DictConfig, ContainerMetadata …) to native Python types
+    # (list, dict) before calling __init__.  This prevents save_hyperparameters()
+    # from storing OmegaConf objects in the checkpoint, which would cause
+    # torch.load(weights_only=True) to fail on PyTorch 2.6+.
+    datamodule: pl.LightningDataModule = hydra.utils.instantiate(cfg.dataset, _convert_="all")
+    model: pl.LightningModule = hydra.utils.instantiate(cfg.method, _convert_="all")
     logger = hydra.utils.instantiate(cfg.logger)
 
     method_name = _get_name_from_target(cfg.method._target_, "method")

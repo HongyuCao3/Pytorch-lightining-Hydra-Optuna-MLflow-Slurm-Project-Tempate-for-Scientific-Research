@@ -40,9 +40,13 @@ class MLPLitModule(pl.LightningModule):
         dropout: float = 0.1,
     ) -> None:
         super().__init__()
+        # Convert OmegaConf ListConfig -> plain list before save_hyperparameters().
+        # Ensures the checkpoint contains only native Python types, which is
+        # required for torch.load(weights_only=True) in PyTorch 2.6+.
+        hidden_dims = list(hidden_dims)
         self.save_hyperparameters()
 
-        self.model = MLP(input_dim, list(hidden_dims), output_dim, dropout)
+        self.model = MLP(input_dim, hidden_dims, output_dim, dropout)
 
         # torchmetrics (reset per epoch automatically in PL)
         self._acc = torchmetrics.Accuracy(task="multiclass", num_classes=output_dim)
