@@ -1,0 +1,7 @@
+# Method-local defaults reference (mirrors configs/method/linear.yaml).
+_target_: src.methods.linear.lit_module.LinearLitModule
+
+input_dim: 13
+output_dim: 3
+learning_rate: 1.0e-3
+weight_decay: 1.0e-4

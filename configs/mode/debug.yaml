@@ -1,0 +1,4 @@
+name: debug
+run_test: false
+run_infer: false
+fast_dev_run: true

@@ -1,0 +1,5 @@
+_target_: pytorch_lightning.loggers.MLFlowLogger
+
+experiment_name: research-template
+tracking_uri: mlruns
+run_name: null

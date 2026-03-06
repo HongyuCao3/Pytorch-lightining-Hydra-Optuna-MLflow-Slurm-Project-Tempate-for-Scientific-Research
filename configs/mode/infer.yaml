@@ -1,0 +1,4 @@
+name: infer
+run_test: false
+run_infer: true
+fast_dev_run: false

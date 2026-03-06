@@ -1,0 +1,4 @@
+name: optuna
+run_test: false
+run_infer: false
+fast_dev_run: false

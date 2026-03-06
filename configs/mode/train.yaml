@@ -1,0 +1,4 @@
+name: train
+run_test: true
+run_infer: false
+fast_dev_run: false

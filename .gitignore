@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Hydra outputs
+outputs/
+multirun/
+.hydra/
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Checkpoints & artifacts
+checkpoints/
+inference_outputs/
+latest_checkpoint.json
+optuna_summary.json
+emergency.ckpt
+data/
+
+# Optuna DB
+*.db
+optuna.db
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/

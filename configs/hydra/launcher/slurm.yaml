@@ -1,0 +1,12 @@
+# @package hydra.launcher
+_target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
+
+timeout_min: 60
+cpus_per_task: 4
+gpus_per_node: 1
+tasks_per_node: 1
+mem_gb: 16
+nodes: 1
+partition: gpu
+name: ${hydra.job.name}
+comment: "Submitted via hydra-submitit-launcher"

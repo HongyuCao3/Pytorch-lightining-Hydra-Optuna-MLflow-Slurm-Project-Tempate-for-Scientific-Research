@@ -1,0 +1,28 @@
+# Core ML stack
+torch>=2.0.0
+pytorch-lightning>=2.0.0
+torchmetrics>=1.0.0
+
+# Config management
+hydra-core>=1.3.0
+omegaconf>=2.3.0
+
+# SLURM launcher
+hydra-submitit-launcher>=1.2.0
+
+# Hyperparameter optimization
+optuna>=3.0.0
+optuna-integration[mlflow]>=3.6.0   # provides MLflowCallback
+
+# Experiment tracking
+mlflow>=2.0.0
+
+# Data & analysis
+scikit-learn>=1.0.0
+numpy>=1.21.0
+matplotlib>=3.5.0
+seaborn>=0.12.0
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0

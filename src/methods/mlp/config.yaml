@@ -1,0 +1,10 @@
+# Method-local defaults reference (mirrors configs/method/mlp.yaml).
+# Add this directory to Hydra's searchpath if you want method-local config discovery.
+_target_: src.methods.mlp.lit_module.MLPLitModule
+
+input_dim: 13
+hidden_dims: [64, 32]
+output_dim: 3
+learning_rate: 1.0e-3
+weight_decay: 1.0e-4
+dropout: 0.1
