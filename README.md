@@ -99,17 +99,13 @@ python -m src.main mode=optuna dataset=wine method=mlp optuna.n_trials=20
 ### Inference + Analysis
 
 ```bash
-python -m src.main mode=infer \
-    inference.checkpoint_path=checkpoints/mlp/<timestamp>/best.ckpt
+python -m src.main mode=infer inference.checkpoint_path=checkpoints/mlp/<timestamp>/best.ckpt
 ```
 
 ### SLURM Multirun
 
 ```bash
-python -m src.main -m \
-    hydra/launcher=slurm \
-    method=mlp,linear \
-    method.learning_rate=1e-3,1e-4
+python -m src.main -m hydra/launcher=slurm method=mlp,linear method.learning_rate=1e-3,1e-4
 ```
 
 ### Export checkpoint
