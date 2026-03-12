@@ -1,0 +1,19 @@
+/* Light mode */
+
+.algorithm {
+  border: 1px solid #444;
+  padding: 1.2em;
+  background-color: #fafafa;
+  font-family: "Courier New", monospace;
+  line-height: 1.6;
+  border-radius: 6px;
+  color: #222;
+}
+
+/* Dark mode (Quarto aware) */
+
+body.quarto-dark .algorithm {
+  background-color: #1e1e1e;
+  border: 1px solid #777;
+  color: #e6e6e6;
+}
