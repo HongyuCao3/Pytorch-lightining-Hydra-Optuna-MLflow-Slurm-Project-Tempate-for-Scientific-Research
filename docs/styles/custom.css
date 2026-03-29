@@ -1,3 +1,64 @@
+/* ── What/Why/How disclosure toggles ── */
+details {
+  background: #2c3035;
+  border: 1px solid #495057;
+  border-radius: 6px;
+  margin: 0.8rem 0 1.4rem;
+  padding: 0;
+}
+
+details summary {
+  cursor: pointer;
+  padding: 0.6rem 1rem;
+  color: #adb5bd;
+  font-size: 0.88rem;
+  list-style: none;
+  user-select: none;
+  border-radius: 6px;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+details summary::-webkit-details-marker { display: none; }
+
+details summary::before {
+  content: "▶ ";
+  font-size: 0.7rem;
+  opacity: 0.6;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+
+details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+details[open] summary {
+  color: #f8f9fa;
+  background: #343a40;
+  border-bottom: 1px solid #495057;
+  border-radius: 6px 6px 0 0;
+}
+
+details > *:not(summary) {
+  padding: 0.8rem 1.2rem;
+  color: #ced4da;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+details ol, details ul {
+  padding-left: 1.4rem;
+  margin: 0.4rem 0;
+}
+
+details li {
+  margin-bottom: 0.3rem;
+}
+
+details strong {
+  color: #f8f9fa;
+}
+
 /* ── Graphviz / SVG transparency ── */
 .cell-output-display svg,
 .quarto-figure svg {
