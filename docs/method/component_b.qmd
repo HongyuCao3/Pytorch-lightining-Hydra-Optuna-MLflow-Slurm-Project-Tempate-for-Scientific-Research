@@ -2,129 +2,111 @@
 title: "Component B"
 ---
 
-> **Rename this page** to reflect the actual component (e.g., "Decoder", "Classifier Head", "Loss Module").
+> **Rename this page** to reflect the actual component (e.g., "Classifier Head", "Decoder", "Loss Module").
 
-## Role and Responsibility
+## What — Model / Process
 
-- **What it does**: [single-sentence description of the transformation performed]
-- **Input**: shape, dtype, semantics — typically the output of Component A
-- **Output**: shape, dtype, semantics — typically logits or structured predictions
-- **Contract with Component A**: [describe interface dependency]
+- **Model type**: [e.g., linear classification head / regression head / structured output decoder]
+- **Process**: maps latent embedding from Component A → task-specific prediction + training signal
+- **Input contract**: tensor `h` of shape `[B × H]`, produced by Component A
+- **Output contract (train)**: scalar loss; **output contract (infer)**: `{"pred": [B], "prob": [B × C], "meta": {...}}`
+- **Key property**: Component B is the only module that touches the task labels `y`; Component A is label-agnostic
 
-```{dot}
-//| label: fig-comp-b-role
-//| fig-cap: "Component B: data flow from Component A to output"
-//| fig-width: 7
-//| fig-height: 2.4
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.55, nodesep=0.5]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
+## Why — Selection Rationale
 
-  CompA [label="Component A\noutput",   fillcolor="#375a7f"]
-  Op1   [label="Op 1"]
-  Op2   [label="Op 2"]
-  Logit [label="Logits\n[B × C]",       fillcolor="#1a4a3a", color="#00bc8c"]
-
-  CompA -> Op1 -> Op2 -> Logit
-}
-```
-
----
-
-## Internal Structure
-
-- **Projection**: maps from Component A's embedding space to output space
-- **Head type**: [linear / MLP / attention] — justify with empirical or theoretical argument
-- **Output activation**: [softmax for probabilities / none for logits passed to loss]
-- **Calibration**: [e.g., temperature scaling applied at inference]
+- **Primary reason**: [e.g., a single linear layer minimises overfitting when dataset is small; embedding quality from A captures non-linearity]
+- **Why not a deeper head**: adding layers duplicates capacity already in Component A, increasing overfitting risk
+- **Why not alternative A** *(e.g., SVM head)*: requires separate training step; breaks end-to-end gradient flow
+- **Why not alternative B** *(e.g., GP head)*: inference cost scales with training set size; unsuitable for large datasets
+- **Necessary condition**: Component A must produce linearly separable embeddings — validate with t-SNE analyzer
+- **When to reconsider**: if t-SNE shows non-linearly separable clusters, add one hidden layer to the head
 
 ```{dot}
-//| label: fig-comp-b-internals
-//| fig-cap: "Component B internal structure"
+//| label: fig-comp-b-overview
+//| fig-cap: "Component B: forward pass with train and infer output paths"
 //| fig-width: 6.5
-//| fig-height: 3.2
+//| fig-height: 3.5
 digraph G {
   bgcolor="transparent"
   rankdir=TB
-  graph [ranksep=0.5, nodesep=0.55]
+  graph [ranksep=0.5, nodesep=0.5]
   node [style=filled, fillcolor="#2c3035", color="#4a9eda",
         fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
+        shape=box, width=1.6, height=0.42]
   edge [color="#6c757d", penwidth=1.4]
 
   subgraph row1 {
     rank=same
-    Emb [label="Embedding", fillcolor="#375a7f"]
+    H [label="h  [B × H]", fillcolor="#375a7f"]
+    Y [label="y  [B]",     fillcolor="#375a7f"]
   }
   subgraph row2 {
     rank=same
-    Proj  [label="Projection"]
-    Norm  [label="LayerNorm"]
+    Lin [label="Linear  W, b"]
   }
   subgraph row3 {
     rank=same
-    Logit [label="Logits", fillcolor="#1a4a3a", color="#00bc8c"]
-    Prob  [label="Probs",  fillcolor="#1a4a3a", color="#00bc8c"]
+    Logit [label="Logits  [B × C]"]
+    Sfmx  [label="Softmax  [B × C]"]
+  }
+  subgraph row4 {
+    rank=same
+    Loss [label="CE Loss (train)", fillcolor="#4a2040", color="#e74c3c"]
+    Out  [label="pred / prob (infer)", fillcolor="#1a4a3a", color="#00bc8c"]
   }
 
-  Emb -> Proj
-  Emb -> Norm
-  Proj -> Logit
-  Norm -> Prob
+  H     -> Lin
+  Lin   -> Logit
+  Logit -> Loss  Y -> Loss
+  Logit -> Sfmx  -> Out
 }
 ```
 
----
+<details>
+<summary><strong>How — Formulas and Internal Mechanism</strong></summary>
 
-## Key Design Decisions
+**Linear projection** (no hidden layer):
 
-- **Why not multi-layer head**: single linear layer reduces overfitting given [dataset size]
-- **Loss function**: [e.g., CrossEntropyLoss for classification / MSE for regression] — handles class imbalance via [weights / focal]
-- **Inference contract**: `predict_step` returns `{"pred": Tensor, "prob": Tensor, "meta": {...}}`
+$$\text{logits} = h W^\top + b, \quad W \in \mathbb{R}^{C \times H},\ b \in \mathbb{R}^{C}$$
 
-```{dot}
-//| label: fig-comp-b-inference
-//| fig-cap: "Inference output contract"
-//| fig-width: 7
-//| fig-height: 2.4
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.6, nodesep=0.45]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
+**Training loss** (cross-entropy with optional label smoothing $\epsilon$):
 
-  Model [label="LitModule",   fillcolor="#375a7f"]
-  Pred  [label="pred: Tensor", fillcolor="#1a4a3a", color="#00bc8c"]
-  Prob  [label="prob: Tensor", fillcolor="#1a4a3a", color="#00bc8c"]
-  Meta  [label="meta: dict",  fillcolor="#1a4a3a", color="#00bc8c"]
+$$\mathcal{L} = -\frac{1}{B} \sum_{i=1}^{B}
+  \sum_{c=1}^{C} \tilde{y}_{ic} \log \hat{p}_{ic}, \qquad
+  \tilde{y}_{ic} = (1-\epsilon)\,\mathbf{1}[y_i = c] + \frac{\epsilon}{C}$$
 
-  Model -> Pred
-  Model -> Prob
-  Model -> Meta
+where $\hat{p}_{ic} = \text{softmax}(\text{logits}_i)_c$.
+
+**Inference output contract** (`predict_step`):
+
+```python
+return {
+    "pred": logits.argmax(dim=-1),       # [B]  — integer class index
+    "prob": logits.softmax(dim=-1),      # [B × C] — calibrated probabilities
+    "meta": {"ids": batch["id"], ...},   # pass-through metadata
 }
 ```
 
----
+**Class-imbalance handling** (optional): pass `loss_weight` tensor of shape `[C]` to
+`nn.CrossEntropyLoss(weight=...)`. Weights are normalised to sum to 1.
 
-## Configuration
+**Label smoothing** ($\epsilon > 0$): prevents over-confident predictions; useful when
+training data is noisy or when calibration matters downstream.
 
-Key parameters exposed through Hydra config:
+**Initialisation**: Xavier uniform for $W$; zeros for $b$.
 
-| Parameter | Default | Range | Effect |
-|-----------|---------|-------|--------|
-| `output_dim` | auto | n_classes | output space size |
-| `loss_weight` | None | [0, 1] per class | class-imbalance handling |
-| `label_smoothing` | 0.0 | [0.0, 0.2] | regularisation via soft targets |
+**Config keys**: `method.output_dim` ($C$, auto-set from dataset), `method.label_smoothing`
+($\epsilon$, default 0.0), `method.loss_weight` (optional, default None).
+
+| Key | Default | Sensible range | Primary effect |
+|-----|---------|---------------|----------------|
+| `method.output_dim` | auto | n_classes | output space size |
+| `method.label_smoothing` | 0.0 | 0.0 – 0.2 | prediction confidence regularisation |
+| `method.loss_weight` | None | per-class floats | class-imbalance correction |
 
 ```bash
 # Override example
 python -m src.main method.label_smoothing=0.1
 ```
+
+</details>

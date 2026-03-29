@@ -2,22 +2,31 @@
 title: "Method Overview"
 ---
 
-## Architecture Summary
+## What — Inputs, Outputs, and Modules
 
-- **Input pipeline**: preprocessing → feature extraction → normalisation
-- **Core model**: [e.g., MLP with LayerNorm + residual connections]
-- **Training objective**: loss function + regularisation terms
-- **Inference path**: forward pass → postprocessing → structured output
+- **Input**: [describe modality, shape — e.g., tabular features `[B × D]`, image `[B × C × H × W]`]
+- **Output**: [describe target — e.g., class logits `[B × C]`, regression scalar `[B × 1]`]
+- **Module A** *(Component A)*: [one-line role — e.g., encodes raw features into a latent representation]
+- **Module B** *(Component B)*: [one-line role — e.g., maps latent representation to prediction and loss]
+- **Supporting**: DataModule supplies batches; Trainer orchestrates the loop; MLflow records all runs
+
+## Why — Architectural Intuition
+
+- **Why this decomposition**: separating representation learning (A) from prediction (B) keeps each module independently testable and swappable
+- **Component A is prerequisite**: B consumes A's output — A must run first; B has no raw-input path
+- **Joint effect**: [describe the synergy — e.g., A's normalised embeddings ensure B's gradient is well-scaled]
+- **Without A**: [e.g., feeding raw features directly to B degrades performance by X% — see ablation]
+- **Without B**: [e.g., A alone produces embeddings with no task-specific objective signal]
 
 ```{dot}
-//| label: fig-arch
-//| fig-cap: "High-level architecture: input → model → output"
+//| label: fig-method-overview
+//| fig-cap: "Method overview: inputs → modules → outputs with dependency flow"
 //| fig-width: 7
 //| fig-height: 3.5
 digraph G {
   bgcolor="transparent"
   rankdir=TB
-  graph [ranksep=0.55, nodesep=0.55]
+  graph [ranksep=0.55, nodesep=0.48]
   node [style=filled, fillcolor="#2c3035", color="#4a9eda",
         fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
         shape=box, width=1.6, height=0.42]
@@ -25,146 +34,53 @@ digraph G {
 
   subgraph row1 {
     rank=same
-    Raw   [label="Raw Input", fillcolor="#375a7f"]
-    Meta  [label="Metadata", fillcolor="#375a7f"]
-    Prior [label="Prior / Config", fillcolor="#375a7f"]
-  }
-  subgraph row2 {
-    rank=same
-    Comp_A [label="Component A"]
-    Comp_B [label="Component B"]
-  }
-  subgraph row3 {
-    rank=same
-    Loss  [label="Loss", fillcolor="#4a2040"]
-    Out   [label="Prediction", fillcolor="#1a4a3a", color="#00bc8c"]
-  }
-
-  Raw   -> Comp_A
-  Meta  -> Comp_A
-  Meta  -> Comp_B
-  Prior -> Comp_B
-  Comp_A -> Loss
-  Comp_A -> Out
-  Comp_B -> Loss
-  Comp_B -> Out
-}
-```
-
----
-
-## Design Principles
-
-- **Modularity**: each component has a single responsibility; components are swappable
-- **Reproducibility**: all stochastic elements seeded through Hydra config
-- **Debuggability**: `mode=debug` runs 2 batches end-to-end with full logging
-- **Extensibility**: new methods added via `@register("name")` without touching train loop
-
-```{dot}
-//| label: fig-principles
-//| fig-cap: "Design principle hierarchy"
-//| fig-width: 6.5
-//| fig-height: 2.4
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.6, nodesep=0.45]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.6, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
-
-  Modular   [label="Modularity",      fillcolor="#375a7f"]
-  Repro     [label="Reproducibility", fillcolor="#375a7f"]
-  Extend    [label="Extensibility",   fillcolor="#375a7f"]
-  Outcome   [label="Reliable Results", fillcolor="#1a4a3a", color="#00bc8c", width=1.8]
-
-  Modular -> Outcome
-  Repro   -> Outcome
-  Extend  -> Outcome
-}
-```
-
----
-
-## Components
-
-| Component | Role | Key file | Config key |
-|-----------|------|----------|------------|
-| Component A | [describe role] | `src/methods/*/model.py` | `method.comp_a.*` |
-| Component B | [describe role] | `src/methods/*/lit_module.py` | `method.comp_b.*` |
-| DataModule | data loading + splits | `src/data/*.py` | `dataset.*` |
-| Trainer | training loop + callbacks | `src/train.py` | `trainer.*` |
-
-```{dot}
-//| label: fig-components
-//| fig-cap: "Component interaction at runtime"
-//| fig-width: 7
-//| fig-height: 3.2
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.55, nodesep=0.4]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
-
-  subgraph col1 {
-    rank=same
-    DM  [label="DataModule",  fillcolor="#375a7f"]
+    DM  [label="DataModule",   fillcolor="#375a7f"]
     Cfg [label="Hydra Config", fillcolor="#375a7f"]
   }
-  subgraph col2 {
+  subgraph row2 {
     rank=same
     CA [label="Component A"]
     CB [label="Component B"]
   }
-  subgraph col3 {
+  subgraph row3 {
     rank=same
-    Trainer [label="Trainer", fillcolor="#1a4a3a", color="#00bc8c"]
-    MLflow  [label="MLflow",  fillcolor="#1a4a3a", color="#00bc8c"]
+    Tr  [label="Trainer",   fillcolor="#1a4a3a", color="#00bc8c"]
+    MLf [label="MLflow",    fillcolor="#1a4a3a", color="#00bc8c"]
+    Inf [label="Inference", fillcolor="#1a4a3a", color="#00bc8c"]
   }
 
-  DM  -> CA
-  DM  -> CB
-  Cfg -> CA
-  Cfg -> CB
-  CA -> Trainer
-  CB -> Trainer
-  Trainer -> MLflow
+  DM  -> CA  DM  -> CB
+  Cfg -> CA  Cfg -> CB
+  CA  -> CB [label=" feeds", fontcolor="#adb5bd", fontsize=9]
+  CB  -> Tr
+  Tr  -> MLf
+  CB  -> Inf
 }
 ```
 
----
+<details>
+<summary><strong>How — Component Interaction Details</strong></summary>
 
-## Training Flow
+**Training path** (`Trainer.fit`):
 
-- **Epoch loop**: `Trainer.fit()` calls `training_step` → gradient update → `validation_step`
-- **Checkpointing**: best model saved by `val_loss` (lower is better); path in `latest_checkpoint.json`
-- **LR schedule**: `ReduceLROnPlateau` — no dependency on `max_epochs`
-- **Early stopping**: patience = [N] epochs on `val_loss`
+1. `DataModule` yields batch `(x, y)` of shape `[B × D]`, `[B]`
+2. `Component A` transforms `x` → embedding `h` of shape `[B × H]`
+3. `Component B` takes `h` → computes logits + loss; gradients flow back through both
+4. Optimiser updates both A and B jointly; `ReduceLROnPlateau` monitors `val_loss`
+5. Best checkpoint saved by `val_loss` to `latest_checkpoint.json`
 
-```{dot}
-//| label: fig-train-flow
-//| fig-cap: "Training loop control flow"
-//| fig-width: 7
-//| fig-height: 2.4
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.5, nodesep=0.5]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.5, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
+**Inference path** (`mode=infer`):
 
-  Batch [label="Batch",    fillcolor="#375a7f"]
-  Fwd   [label="Forward",  fillcolor="#343a40"]
-  Loss  [label="Loss",     fillcolor="#4a2040", color="#e74c3c"]
-  Opt   [label="Optimiser"]
-  Ckpt  [label="Checkpoint", fillcolor="#1a4a3a", color="#00bc8c"]
+1. Load checkpoint; restore both A and B weights
+2. Run `predict_step`: A encodes → B produces `{"pred": Tensor, "prob": Tensor, "meta": {...}}`
+3. Inference pipeline aggregates batches → analyzers (confusion matrix, calibration, t-SNE)
 
-  Batch -> Fwd -> Loss -> Opt -> Ckpt
-}
-```
+**Shared state between A and B**:
+
+- A and B share no parameters; they communicate only through the embedding tensor `h`
+- Config keys are namespaced: `method.comp_a.*` and `method.comp_b.*` — no cross-coupling
+
+**Extensibility**: to add Component C, implement `model.py` + `lit_module.py`, register with
+`@register("name")`, add `configs/method/<name>.yaml` with `_target_`. No changes to train loop.
+
+</details>

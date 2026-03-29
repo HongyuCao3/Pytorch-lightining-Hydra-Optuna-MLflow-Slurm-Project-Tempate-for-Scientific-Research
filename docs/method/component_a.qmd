@@ -2,51 +2,28 @@
 title: "Component A"
 ---
 
-> **Rename this page** to reflect the actual component (e.g., "Encoder", "Feature Extractor", "Attention Module").
+> **Rename this page** to reflect the actual component (e.g., "MLP Encoder", "CNN Backbone", "Transformer Block").
 
-## Role and Responsibility
+## What — Model / Process
 
-- **What it does**: [single-sentence description of the transformation performed]
-- **Input**: shape, dtype, semantics of the tensor received
-- **Output**: shape, dtype, semantics of the tensor produced
-- **Invariant**: property that holds regardless of input distribution
+- **Model type**: [e.g., multi-layer perceptron / convolutional encoder / self-attention block]
+- **Process**: maps raw input features → a fixed-dimension latent representation
+- **Input contract**: tensor `x` of shape `[B × D_in]`, normalised to zero mean / unit variance upstream
+- **Output contract**: tensor `h` of shape `[B × H]`; consumed by Component B; no side effects
+- **Key property**: output is deterministic at inference (dropout disabled via `model.eval()`)
+
+## Why — Selection Rationale
+
+- **Primary reason**: [e.g., MLP with LayerNorm handles arbitrary batch sizes including B=1 — BatchNorm would fail]
+- **Why not alternative A** *(e.g., CNN)*: input has no spatial structure; convolution inductive bias is irrelevant
+- **Why not alternative B** *(e.g., Transformer)*: [e.g., dataset too small for attention to learn meaningful patterns]
+- **Necessary condition**: [state when this model makes sense — e.g., "tabular features with no explicit ordering"]
+- **When to reconsider**: [e.g., if input becomes sequential or spatial, switch to Transformer or CNN backbone]
 
 ```{dot}
-//| label: fig-comp-a-role
-//| fig-cap: "Component A: data flow"
+//| label: fig-comp-a-overview
+//| fig-cap: "Component A: input contract, internal structure, and selection rationale"
 //| fig-width: 7
-//| fig-height: 2.4
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.55, nodesep=0.5]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
-
-  In  [label="Input\n[B × D_in]",  fillcolor="#375a7f"]
-  Op1 [label="Op 1"]
-  Op2 [label="Op 2"]
-  Out [label="Output\n[B × D_out]", fillcolor="#1a4a3a", color="#00bc8c"]
-
-  In -> Op1 -> Op2 -> Out
-}
-```
-
----
-
-## Internal Structure
-
-- **Layers**: list each sub-layer in order with its output shape
-- **Normalisation**: LayerNorm applied [before / after] each block — avoids batch-size sensitivity
-- **Activation**: [e.g., GELU / ReLU / SiLU] — justify choice
-- **Skip connections**: [yes/no] — describe residual path if applicable
-
-```{dot}
-//| label: fig-comp-a-internals
-//| fig-cap: "Internal structure with skip connections"
-//| fig-width: 6.5
 //| fig-height: 3.5
 digraph G {
   bgcolor="transparent"
@@ -59,90 +36,67 @@ digraph G {
 
   subgraph row1 {
     rank=same
-    In [label="Input", fillcolor="#375a7f"]
+    In [label="Input  x", fillcolor="#375a7f"]
   }
   subgraph row2 {
     rank=same
-    Norm  [label="LayerNorm"]
-    Skip1 [label="(identity)", style="dashed", color="#6c757d", fontcolor="#868e96"]
+    LN    [label="LayerNorm"]
+    Skip  [label="skip path", style=dashed, color="#6c757d", fontcolor="#868e96"]
   }
   subgraph row3 {
     rank=same
-    Linear [label="Linear"]
-    Act    [label="Activation"]
+    Lin [label="Linear  W, b"]
+    Act [label="Activation"]
   }
   subgraph row4 {
     rank=same
-    Out [label="Output", fillcolor="#1a4a3a", color="#00bc8c"]
+    Out [label="Output  h", fillcolor="#1a4a3a", color="#00bc8c"]
   }
 
-  In -> Norm -> Linear -> Act -> Out
-  In -> Skip1 -> Out [style=dashed, color="#6c757d"]
-  Norm -> Act
+  In  -> LN  -> Lin -> Act -> Out
+  In  -> Skip -> Out [style=dashed, color="#6c757d"]
+  LN  -> Act
 }
 ```
 
----
+<details>
+<summary><strong>How — Formulas and Internal Mechanism</strong></summary>
 
-## Key Design Decisions
+**Single block forward pass** (pre-norm residual):
 
-- **Why LayerNorm over BatchNorm**: stable training with batch size = 1 during inference
-- **Why [activation]**: [empirical reason or theoretical justification]
-- **Initialisation**: [e.g., Kaiming uniform for linear layers]
-- **Alternatives considered**: [alternative A] rejected because [reason]; [alternative B] rejected because [reason]
+$$h^{(l)} = h^{(l-1)} + W_2 \,\sigma\!\left(W_1 \,\text{LN}(h^{(l-1)}) + b_1\right) + b_2$$
 
-```{dot}
-//| label: fig-comp-a-decisions
-//| fig-cap: "Design space: chosen path vs. alternatives"
-//| fig-width: 7
-//| fig-height: 2.8
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.6, nodesep=0.45]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
+where $l \in \{1, \ldots, L\}$, $W_1 \in \mathbb{R}^{H_\text{ff} \times H}$,
+$W_2 \in \mathbb{R}^{H \times H_\text{ff}}$, and $\sigma$ is the chosen activation.
 
-  subgraph col1 {
-    rank=same
-    Alt1 [label="Alt A", fillcolor="#4a2040", color="#e74c3c"]
-    Chosen [label="Chosen Design", fillcolor="#1a4a3a", color="#00bc8c"]
-    Alt2 [label="Alt B", fillcolor="#4a2040", color="#e74c3c"]
-  }
-  subgraph col2 {
-    rank=same
-    Perf [label="Performance"]
-    Cost [label="Complexity"]
-  }
-  subgraph col3 {
-    rank=same
-    Decision [label="Final Choice", fillcolor="#375a7f"]
-  }
+**Activation choice**:
 
-  Alt1   -> Cost [style=dashed, color="#e74c3c"]
-  Chosen -> Perf
-  Chosen -> Cost
-  Alt2   -> Perf [style=dashed, color="#e74c3c"]
-  Perf   -> Decision
-  Cost   -> Decision
-}
-```
+- `GELU` preferred — smooth gradient near zero, empirically outperforms ReLU on tabular tasks
+- Alternative: `SiLU` / `Swish` — similar performance, slightly higher compute cost
 
----
+**LayerNorm** normalises across the feature dimension $H$ (not batch dimension):
 
-## Configuration
+$$\text{LN}(h) = \frac{h - \mu}{\sqrt{\sigma^2 + \epsilon}} \odot \gamma + \beta, \quad
+\mu = \tfrac{1}{H}\textstyle\sum_i h_i, \quad
+\sigma^2 = \tfrac{1}{H}\textstyle\sum_i (h_i - \mu)^2$$
 
-Key parameters exposed through Hydra config (`configs/method/*.yaml`):
+**Dropout** applied after activation, rate $p$ set by `method.dropout`; disabled in `eval()` mode.
 
-| Parameter | Default | Range | Effect |
-|-----------|---------|-------|--------|
-| `hidden_dim` | — | [32, 512] | capacity vs. overfitting |
-| `num_layers` | — | [1, 8] | depth vs. training stability |
-| `dropout` | — | [0.0, 0.5] | regularisation strength |
+**Initialisation**: Kaiming uniform for $W_1$, $W_2$; zeros for biases; $\gamma=1$, $\beta=0$.
+
+**Config keys**: `method.hidden_dim` ($H$), `method.num_layers` ($L$),
+`method.dropout` ($p$), `method.ff_multiplier` ($H_\text{ff} = \text{multiplier} \times H$).
+
+| Key | Default | Sensible range | Primary effect |
+|-----|---------|---------------|----------------|
+| `method.hidden_dim` | — | 64 – 512 | model capacity |
+| `method.num_layers` | — | 1 – 6 | representational depth |
+| `method.dropout` | — | 0.0 – 0.4 | regularisation strength |
+| `method.ff_multiplier` | 4 | 2 – 8 | FFN width relative to hidden |
 
 ```bash
 # Override example
-python -m src.main method.hidden_dim=256 method.num_layers=4
+python -m src.main method.hidden_dim=256 method.num_layers=3 method.dropout=0.1
 ```
+
+</details>
