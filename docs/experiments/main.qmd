@@ -2,42 +2,101 @@
 title: "Main Experiment"
 ---
 
-## Setup
+## What — Experiment Identity
 
-- **Goal**: compare the full proposed method against all baselines on the held-out test set
+- **Experiment**: compare the full proposed method against all baselines on the held-out test set
+
+## Why — Experiment Purpose
+
 - **Claim addressed**: Claim 1 — the full model outperforms [best baseline] by ≥ [δ] on [metric]
-- **Run command**:
+
+```{dot}
+//| label: fig-main-design
+//| fig-cap: "Main experiment: metrics measure baseline-vs-proposed gap to confirm Claim 1"
+//| fig-width: 7
+//| fig-height: 3.2
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.55, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.6, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    BL [label="Baselines",  fillcolor="#4a2040", color="#e74c3c"]
+    Our [label="Proposed",  fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+  subgraph row2 {
+    rank=same
+    MA [label="Metric A"]
+    MB [label="Metric B"]
+    MC [label="Metric C"]
+  }
+  subgraph row3 {
+    rank=same
+    Claim [label="Claim 1 Confirmed", fillcolor="#375a7f"]
+  }
+
+  BL  -> MA  BL  -> MB  BL  -> MC
+  Our -> MA  Our -> MB  Our -> MC
+  MA  -> Claim  MB -> Claim  MC -> Claim
+}
+```
+
+<details>
+<summary><strong>How — Datasets</strong></summary>
+
+- **Dataset**: [name, version]
+- **Split**: [N_train / N_val / N_test] samples
+- **Preprocessing**: [standardisation, missing-value handling, class-imbalance strategy]
+
+</details>
+
+<details>
+<summary><strong>How — Baselines</strong></summary>
+
+| Baseline | Description | Reference |
+|----------|-------------|-----------|
+| Linear | Logistic regression | scikit-learn |
+| MLP-vanilla | MLP without key components | this repo |
+| [SotA method] | [description] | [citation] |
+
+- All baselines trained with identical optimiser, lr, and seed
+
+</details>
+
+<details>
+<summary><strong>How — Evaluation Metrics</strong></summary>
+
+| Metric | What it measures | Why chosen |
+|--------|-----------------|------------|
+| [Metric A] | [e.g., overall accuracy] | [primary claim metric] |
+| [Metric B] | [e.g., macro F1] | [handles class imbalance] |
+| [Metric C] | [e.g., ECE calibration] | [measures prediction confidence] |
+
+- Statistical test: [test name], p < 0.05 vs. best baseline
+- Effect size: Cohen's d = [value] / Δ = [absolute improvement]
+
+</details>
+
+<details>
+<summary><strong>How — Run Commands</strong></summary>
 
 ```bash
+# Train proposed method
 python -m src.main dataset=<dataset> method=<method>
+
+# Train each baseline
+python -m src.main dataset=<dataset> method=linear
+python -m src.main dataset=<dataset> method=mlp_vanilla
+
 # MLflow run logged to: mlruns/
 ```
 
-```{dot}
-//| label: fig-main-setup
-//| fig-cap: "Main experiment: training and evaluation flow"
-//| fig-width: 7
-//| fig-height: 2.4
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.5, nodesep=0.5]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
-
-  Train [label="Train Set", fillcolor="#375a7f"]
-  Val   [label="Val Set",   fillcolor="#375a7f"]
-  Model [label="Best Ckpt"]
-  Test  [label="Test Set",  fillcolor="#4a2040", color="#e74c3c"]
-  Score [label="Final Score", fillcolor="#1a4a3a", color="#00bc8c"]
-
-  Train -> Model
-  Val   -> Model [label=" early stop", fontcolor="#adb5bd", fontsize=9]
-  Model -> Test -> Score
-}
-```
+</details>
 
 ---
 
@@ -52,86 +111,23 @@ digraph G {
 | [SotA method] | — | — | — |
 | **Proposed (ours)** | **—** | **—** | **—** |
 
-- Statistical test: [test name], p = [value] vs. best baseline
-- Effect size: Cohen's d = [value] / Δ = [absolute improvement]
-
-```{dot}
-//| label: fig-main-results
-//| fig-cap: "Result comparison: baseline vs. proposed"
-//| fig-width: 7
-//| fig-height: 2.8
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.6, nodesep=0.45]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
-
-  subgraph col1 {
-    rank=same
-    BL1 [label="Linear",      fillcolor="#4a2040"]
-    BL2 [label="MLP-vanilla", fillcolor="#4a2040"]
-    BL3 [label="SotA",        fillcolor="#4a2040"]
-  }
-  subgraph col2 {
-    rank=same
-    Our [label="Proposed", fillcolor="#1a4a3a", color="#00bc8c"]
-  }
-  subgraph col3 {
-    rank=same
-    Win [label="Claim 1\nConfirmed", fillcolor="#375a7f"]
-  }
-
-  BL1 -> Our [label=" Δ+?", fontcolor="#adb5bd", fontsize=9]
-  BL2 -> Our [label=" Δ+?", fontcolor="#adb5bd", fontsize=9]
-  BL3 -> Our [label=" Δ+?", fontcolor="#adb5bd", fontsize=9]
-  Our -> Win
-}
-```
-
 ---
 
 ## Analysis
 
-- **Error analysis**: which samples does the model get wrong? Any systematic pattern?
+<details>
+<summary><strong>Error Analysis</strong></summary>
+
 - **Confusion matrix**: large off-diagonal entries indicate [class-pair confusion] — [explanation]
 - **Per-class performance**: [class with lowest recall] suffers from [hypothesised reason]
 - **Calibration**: reliability diagram shows [over/under-confident in what range]
 
-```{dot}
-//| label: fig-analysis
-//| fig-cap: "Error analysis pipeline"
-//| fig-width: 7
-//| fig-height: 2.4
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.5, nodesep=0.5]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
+</details>
 
-  Preds  [label="Predictions",  fillcolor="#375a7f"]
-  Conf   [label="Confusion\nMatrix"]
-  PerCls [label="Per-Class\nMetrics"]
-  Calib  [label="Calibration",  fillcolor="#1a4a3a", color="#00bc8c"]
+<details>
+<summary><strong>Claim Status</strong></summary>
 
-  Preds -> Conf -> PerCls -> Calib
-}
-```
+- **Claim 1 status**: ⬜ Pending — will be updated after runs complete
+- **Key finding**: [placeholder — state the main insight]
 
----
-
-## MLflow Tracking
-
-All runs automatically logged to `mlruns/`. To view:
-
-```bash
-mlflow ui --backend-store-uri mlruns/
-# Open http://localhost:5000
-```
-
-Key logged artifacts: `config.yaml`, confusion matrix PNG, per-class metrics CSV, checkpoint path.
+</details>

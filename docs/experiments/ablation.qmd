@@ -2,29 +2,19 @@
 title: "Ablation Study"
 ---
 
-## Design
+## What — Experiment Identity
 
-- **Goal**: quantify each component's individual contribution to final performance
+- **Experiment**: quantify each component's individual contribution by systematic removal from the full model
+
+## Why — Experiment Purpose
+
 - **Claim addressed**: Claim 2 — Component X is necessary for the observed gain
-- **Protocol**: start from the full model; remove one component at a time; measure metric drop
-- **Run command**:
-
-```bash
-# Full model
-python -m src.main dataset=<dataset> method=<method>
-
-# Without Component A
-python -m src.main dataset=<dataset> method=<method> method.use_comp_a=false
-
-# Without Component B
-python -m src.main dataset=<dataset> method=<method> method.use_comp_b=false
-```
 
 ```{dot}
 //| label: fig-ablation-design
-//| fig-cap: "Ablation: systematic component removal"
+//| fig-cap: "Ablation: metric delta per removed component confirms necessity"
 //| fig-width: 7
-//| fig-height: 3.5
+//| fig-height: 3.2
 digraph G {
   bgcolor="transparent"
   rankdir=TB
@@ -46,20 +36,67 @@ digraph G {
   }
   subgraph row3 {
     rank=same
-    DA [label="Δ Comp A", fillcolor="#4a2040"]
-    DB [label="Δ Comp B", fillcolor="#4a2040"]
-    DC [label="Δ Comp C", fillcolor="#4a2040"]
-  }
-  subgraph row4 {
-    rank=same
-    Rank [label="Contribution Ranking", fillcolor="#375a7f", width=5.0]
+    Delta [label="Δ Metric", fillcolor="#4a2040", color="#e74c3c"]
+    Rank  [label="Contribution\nRanking", fillcolor="#375a7f"]
   }
 
   Full -> WoA  Full -> WoB  Full -> WoC
-  WoA  -> DA   WoB  -> DB   WoC  -> DC
-  DA   -> Rank  DB -> Rank  DC -> Rank
+  WoA  -> Delta  WoB -> Delta  WoC -> Delta
+  Delta -> Rank
 }
 ```
+
+<details>
+<summary><strong>How — Datasets</strong></summary>
+
+- **Dataset**: [same as main experiment]
+- **Split**: [identical to main experiment — ensures comparable results]
+
+</details>
+
+<details>
+<summary><strong>How — Baselines (Ablation Variants)</strong></summary>
+
+| Configuration | What is removed | Expected effect |
+|--------------|----------------|-----------------|
+| Full model | nothing (reference) | best performance |
+| w/o Component A | [describe] | [expected metric drop] |
+| w/o Component B | [describe] | [expected metric drop] |
+| w/o Component C | [describe] | [expected metric drop] |
+| Minimal (baseline) | all components | lower bound |
+
+</details>
+
+<details>
+<summary><strong>How — Evaluation Metrics</strong></summary>
+
+| Metric | What it measures | Why chosen |
+|--------|-----------------|------------|
+| [Metric A] | [same as main] | [consistency with main result] |
+| Δ vs. Full | metric drop when component removed | [directly measures contribution] |
+
+- Protocol: remove one component at a time; measure metric drop relative to full model
+
+</details>
+
+<details>
+<summary><strong>How — Run Commands</strong></summary>
+
+```bash
+# Full model (reference)
+python -m src.main dataset=<dataset> method=<method>
+
+# Without Component A
+python -m src.main dataset=<dataset> method=<method> method.use_comp_a=false
+
+# Without Component B
+python -m src.main dataset=<dataset> method=<method> method.use_comp_b=false
+
+# Without Component C (if applicable)
+python -m src.main dataset=<dataset> method=<method> method.use_comp_c=false
+```
+
+</details>
 
 ---
 
@@ -75,78 +112,32 @@ digraph G {
 | w/o Component C | — | — | — |
 | Minimal (baseline) | — | — | — |
 
+---
+
+## Analysis
+
+<details>
+<summary><strong>Contribution Ranking</strong></summary>
+
 - **Most important component**: [component name] — removing it drops [metric] by [Δ]
 - **Least important component**: [component name] — safely removable if compute is constrained
 
-```{dot}
-//| label: fig-ablation-results
-//| fig-cap: "Contribution of each component (larger drop = more important)"
-//| fig-width: 6.5
-//| fig-height: 2.8
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.6, nodesep=0.45]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.6, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
+</details>
 
-  subgraph col1 {
-    rank=same
-    CA [label="Comp A\n(high impact)", fillcolor="#1a4a3a", color="#00bc8c"]
-    CB [label="Comp B\n(medium)",      fillcolor="#375a7f"]
-    CC [label="Comp C\n(low)",         fillcolor="#4a2040"]
-  }
-  subgraph col2 {
-    rank=same
-    Full [label="Full Model", fillcolor="#1a4a3a", color="#00bc8c"]
-  }
+<details>
+<summary><strong>Interaction Effects</strong></summary>
 
-  CA -> Full
-  CB -> Full
-  CC -> Full
-}
-```
-
----
-
-## Interaction Effects
-
-- **A + B synergy**: combining A and B yields [more / less] than the sum of individual contributions — [explanation]
-- **Redundancy**: [components X and Y] partially overlap in function; removing both hurts less than expected
+- **A + B synergy**: combining A and B yields [more / less] than the sum of individual contributions
+- **Redundancy**: [components X and Y] partially overlap in function
 - **Order sensitivity**: [if applicable] initialisation order of components affects convergence
 
-```{dot}
-//| label: fig-interaction
-//| fig-cap: "Component interaction: synergy vs. redundancy"
-//| fig-width: 7
-//| fig-height: 2.4
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.55, nodesep=0.5]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
+</details>
 
-  CA   [label="Comp A",     fillcolor="#375a7f"]
-  CB   [label="Comp B",     fillcolor="#375a7f"]
-  Syn  [label="Synergy",    fillcolor="#1a4a3a", color="#00bc8c"]
-  Red  [label="Redundancy", fillcolor="#4a2040", color="#e74c3c"]
-  Out  [label="Net Gain",   fillcolor="#1a4a3a", color="#00bc8c"]
-
-  CA -> Syn  CB -> Syn
-  CA -> Red  CB -> Red
-  Syn -> Out  Red -> Out [style=dashed, color="#e74c3c"]
-}
-```
-
----
-
-## Takeaway
+<details>
+<summary><strong>Claim Status</strong></summary>
 
 - **Claim 2 status**: ⬜ Pending — will be updated after runs complete
 - **Key finding**: [placeholder — state the main insight from this ablation]
 - **Action**: [if a component proves unnecessary, note whether to remove from final model]
+
+</details>

@@ -2,15 +2,23 @@
 title: "Experiments Dashboard"
 ---
 
-## Experimental Design
+## What — Experiment Suite
 
-- **Goal**: systematically validate each claim in `claims.qmd`
+- **Experiment suite**: three experiments systematically validate each claim in `claims.qmd`
+- **Main Experiment**: full model vs. all baselines on held-out test set
+- **Ablation Study**: component-by-component contribution analysis
+- **HP Sensitivity**: effect of key hyperparameters on performance and robustness
+
+## Why — Validation Strategy
+
+- **Why three experiments**: each targets a different claim type — superiority (main), necessity (ablation), robustness (HP)
+- **Why this ordering**: main experiment confirms the headline result; ablation explains it; HP search stress-tests it
+- **Reproducibility**: `seed=42` fixed in all runs; results reported as mean ± std over [K] seeds
 - **Compute budget**: [e.g., ~N GPU-hours on single A100 / RTX 4090]
-- **Reproducibility seed**: `seed=42` fixed in all runs; results reported as mean ± std over [K] seeds
 
 ```{dot}
 //| label: fig-exp-design
-//| fig-cap: "Experiment suite: claim coverage"
+//| fig-cap: "Validation strategy: claims → experiments → metrics → confirmed claims"
 //| fig-width: 7
 //| fig-height: 3.5
 digraph G {
@@ -36,19 +44,23 @@ digraph G {
   }
   subgraph row3 {
     rank=same
-    R1 [label="Results 1", fillcolor="#1a4a3a", color="#00bc8c"]
-    R2 [label="Results 2", fillcolor="#1a4a3a", color="#00bc8c"]
-    R3 [label="Results 3", fillcolor="#1a4a3a", color="#00bc8c"]
+    M1 [label="Primary Metric"]
+    M2 [label="Delta per Comp"]
+    M3 [label="Sensitivity"]
+  }
+  subgraph row4 {
+    rank=same
+    Out [label="Validated Claims", fillcolor="#1a4a3a", color="#00bc8c", width=5.0]
   }
 
   C1 -> Main  C2 -> Abl  C3 -> HP
-  Main -> R1  Abl -> R2  HP -> R3
+  Main -> M1  Abl -> M2  HP -> M3
+  M1 -> Out  M2 -> Out  M3 -> Out
 }
 ```
 
----
-
-## Dataset
+<details>
+<summary><strong>How — Datasets</strong></summary>
 
 - **Name**: [dataset name and version]
 - **Size**: [N_train / N_val / N_test] samples; [D] features; [C] classes / continuous target
@@ -56,32 +68,10 @@ digraph G {
 - **Preprocessing**: standardisation, missing-value handling, class-imbalance strategy
 - **Splits**: [stratified k-fold / random / time-based] — consistent across all experiments
 
-```{dot}
-//| label: fig-data-pipeline
-//| fig-cap: "Data pipeline from raw source to model input"
-//| fig-width: 7
-//| fig-height: 2.4
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.5, nodesep=0.5]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
+</details>
 
-  Raw   [label="Raw Data",   fillcolor="#375a7f"]
-  Split [label="Train/Val/Test"]
-  Norm  [label="Normalise"]
-  Batch [label="DataLoader", fillcolor="#1a4a3a", color="#00bc8c"]
-
-  Raw -> Split -> Norm -> Batch
-}
-```
-
----
-
-## Baselines
+<details>
+<summary><strong>How — Baselines</strong></summary>
 
 | Baseline | Description | Reference |
 |----------|-------------|-----------|
@@ -91,6 +81,38 @@ digraph G {
 
 - All baselines trained with identical optimiser, lr, and seed
 - Hyperparameters for each baseline tuned with the same Optuna budget
+
+</details>
+
+<details>
+<summary><strong>How — Evaluation Metrics</strong></summary>
+
+| Metric | Formula / Tool | Used In |
+|--------|---------------|---------|
+| [Metric A] | [e.g., accuracy, top-1] | Main, Ablation |
+| [Metric B] | [e.g., macro F1] | Main, Ablation |
+| [Metric C] | [e.g., ECE — calibration] | Main |
+| Δ vs. Full | metric drop when component removed | Ablation |
+| Sensitivity σ | std across HP range | HP Search |
+
+- Statistical test: [test name] for significance, p < 0.05
+- Effect size: Cohen's d or absolute Δ reported alongside p-value
+
+</details>
+
+<details>
+<summary><strong>How — MLflow Tracking</strong></summary>
+
+All runs automatically logged to `mlruns/`. To view:
+
+```bash
+mlflow ui --backend-store-uri mlruns/
+# Open http://localhost:5000
+```
+
+Key logged artifacts: `config.yaml`, confusion matrix PNG, per-class metrics CSV, checkpoint path.
+
+</details>
 
 ---
 
@@ -110,39 +132,3 @@ digraph G {
 <p>Effect of key hyperparameters on performance</p>
 </div>
 :::
-
-```{dot}
-//| label: fig-exp-nav
-//| fig-cap: "Experiment types and their primary metrics"
-//| fig-width: 7
-//| fig-height: 2.8
-digraph G {
-  bgcolor="transparent"
-  rankdir=LR
-  graph [ranksep=0.6, nodesep=0.45]
-  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
-        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
-        shape=box, width=1.55, height=0.42]
-  edge [color="#6c757d", penwidth=1.4]
-
-  subgraph col1 {
-    rank=same
-    E1 [label="Main Expt",  fillcolor="#375a7f"]
-    E2 [label="Ablation",   fillcolor="#375a7f"]
-    E3 [label="HP Search",  fillcolor="#375a7f"]
-  }
-  subgraph col2 {
-    rank=same
-    M1 [label="Primary Metric"]
-    M2 [label="Delta per\nComponent"]
-    M3 [label="Sensitivity\nCurve"]
-  }
-  subgraph col3 {
-    rank=same
-    Out [label="Validated\nClaims", fillcolor="#1a4a3a", color="#00bc8c"]
-  }
-
-  E1 -> M1  E2 -> M2  E3 -> M3
-  M1 -> Out  M2 -> Out  M3 -> Out
-}
-```
