@@ -1,0 +1,166 @@
+---
+title: "Claims"
+---
+
+## Main Hypothesis
+
+> **H0 (null)**: The proposed method performs no better than [strongest baseline] on [metric] under [conditions].
+>
+> **H1 (alternative)**: The proposed method statistically significantly outperforms [strongest baseline] by at least [δ] on [metric].
+
+- Decision threshold: p < 0.05 (two-tailed), effect size ≥ [δ]
+- Test: [paired t-test / Wilcoxon signed-rank / bootstrap CI]
+
+```{dot}
+//| label: fig-hypothesis
+//| fig-cap: "Hypothesis structure: null vs. alternative"
+//| fig-width: 7
+//| fig-height: 2.8
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.52, nodesep=0.55]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.6, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    Null [label="Null H0", fillcolor="#4a2040", color="#e74c3c"]
+    Alt  [label="Alt H1", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+  subgraph row2 {
+    rank=same
+    Test [label="Statistical Test", fillcolor="#375a7f"]
+  }
+  subgraph row3 {
+    rank=same
+    Reject [label="Reject H0", fillcolor="#1a4a3a", color="#00bc8c"]
+    Fail   [label="Fail to Reject", fillcolor="#4a2040", color="#e74c3c"]
+    Revise [label="Revise Claim"]
+  }
+
+  Null -> Test  Alt -> Test
+  Test -> Reject  Test -> Fail
+  Fail -> Revise
+}
+```
+
+---
+
+## Supporting Claims
+
+Each claim below is independently testable and maps to a specific experiment.
+
+- **Claim 1**: [specific, measurable statement — e.g., "Component X improves F1 by ≥ 2pp"]
+  - Evidence needed: ablation removing Component X
+  - Falsification: F1 delta < 2pp in ablation
+- **Claim 2**: [specific, measurable statement]
+  - Evidence needed: [experiment type]
+  - Falsification: [condition that disproves]
+- **Claim 3**: [specific, measurable statement]
+  - Evidence needed: [experiment type]
+  - Falsification: [condition that disproves]
+
+```{dot}
+//| label: fig-claims
+//| fig-cap: "Claim → experiment → evidence chain"
+//| fig-width: 7
+//| fig-height: 3.5
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.52, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.6, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    C1 [label="Claim 1", fillcolor="#375a7f"]
+    C2 [label="Claim 2", fillcolor="#375a7f"]
+    C3 [label="Claim 3", fillcolor="#375a7f"]
+  }
+  subgraph row2 {
+    rank=same
+    X1 [label="Main Expt"]
+    X2 [label="Ablation"]
+    X3 [label="HP Search"]
+  }
+  subgraph row3 {
+    rank=same
+    E1 [label="Evidence 1", fillcolor="#1a4a3a", color="#00bc8c"]
+    E2 [label="Evidence 2", fillcolor="#1a4a3a", color="#00bc8c"]
+    E3 [label="Evidence 3", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+  subgraph row4 {
+    rank=same
+    V [label="Validated", fillcolor="#1a4a3a", color="#00bc8c", width=5.0]
+  }
+
+  C1 -> X1  C2 -> X2  C3 -> X3
+  X1 -> E1  X2 -> E2  X3 -> E3
+  E1 -> V  E2 -> V  E3 -> V
+}
+```
+
+---
+
+## Assumptions and Risks
+
+- **Assumption A**: [e.g., data is i.i.d.] — risk: if violated, Claim 1 may not hold
+- **Assumption B**: [e.g., single-GPU training suffices] — risk: may affect reproducibility
+- **Assumption C**: [e.g., train/test domains are aligned] — risk: distribution shift
+
+```{dot}
+//| label: fig-risks
+//| fig-cap: "Assumption → risk → mitigation"
+//| fig-width: 7
+//| fig-height: 2.8
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.6, nodesep=0.45]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph col1 {
+    rank=same
+    A1 [label="Assumption A", fillcolor="#375a7f"]
+    A2 [label="Assumption B", fillcolor="#375a7f"]
+    A3 [label="Assumption C", fillcolor="#375a7f"]
+  }
+  subgraph col2 {
+    rank=same
+    R1 [label="Risk 1", fillcolor="#4a2040", color="#e74c3c"]
+    R2 [label="Risk 2", fillcolor="#4a2040", color="#e74c3c"]
+    R3 [label="Risk 3", fillcolor="#4a2040", color="#e74c3c"]
+  }
+  subgraph col3 {
+    rank=same
+    M1 [label="Mitigation 1", fillcolor="#1a4a3a", color="#00bc8c"]
+    M2 [label="Mitigation 2", fillcolor="#1a4a3a", color="#00bc8c"]
+    M3 [label="Mitigation 3", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+
+  A1 -> R1 -> M1
+  A2 -> R2 -> M2
+  A3 -> R3 -> M3
+}
+```
+
+---
+
+## Claim Status Tracker
+
+| Claim | Experiment | Status | Notes |
+|-------|-----------|--------|-------|
+| Claim 1 | Main experiment | ⬜ Pending | — |
+| Claim 2 | Ablation | ⬜ Pending | — |
+| Claim 3 | HP search | ⬜ Pending | — |
+
+> Update status: ⬜ Pending → 🔄 Running → ✅ Confirmed / ❌ Refuted

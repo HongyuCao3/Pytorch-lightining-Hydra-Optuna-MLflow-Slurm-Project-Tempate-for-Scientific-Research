@@ -1,0 +1,148 @@
+---
+title: "Experiments Dashboard"
+---
+
+## Experimental Design
+
+- **Goal**: systematically validate each claim in `claims.qmd`
+- **Compute budget**: [e.g., ~N GPU-hours on single A100 / RTX 4090]
+- **Reproducibility seed**: `seed=42` fixed in all runs; results reported as mean ± std over [K] seeds
+
+```{dot}
+//| label: fig-exp-design
+//| fig-cap: "Experiment suite: claim coverage"
+//| fig-width: 7
+//| fig-height: 3.5
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.55, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.6, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    C1 [label="Claim 1", fillcolor="#375a7f"]
+    C2 [label="Claim 2", fillcolor="#375a7f"]
+    C3 [label="Claim 3", fillcolor="#375a7f"]
+  }
+  subgraph row2 {
+    rank=same
+    Main [label="Main Expt"]
+    Abl  [label="Ablation"]
+    HP   [label="HP Search"]
+  }
+  subgraph row3 {
+    rank=same
+    R1 [label="Results 1", fillcolor="#1a4a3a", color="#00bc8c"]
+    R2 [label="Results 2", fillcolor="#1a4a3a", color="#00bc8c"]
+    R3 [label="Results 3", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+
+  C1 -> Main  C2 -> Abl  C3 -> HP
+  Main -> R1  Abl -> R2  HP -> R3
+}
+```
+
+---
+
+## Dataset
+
+- **Name**: [dataset name and version]
+- **Size**: [N_train / N_val / N_test] samples; [D] features; [C] classes / continuous target
+- **Source**: [origin — UCI / Kaggle / custom / synthetic]
+- **Preprocessing**: standardisation, missing-value handling, class-imbalance strategy
+- **Splits**: [stratified k-fold / random / time-based] — consistent across all experiments
+
+```{dot}
+//| label: fig-data-pipeline
+//| fig-cap: "Data pipeline from raw source to model input"
+//| fig-width: 7
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.5, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  Raw   [label="Raw Data",   fillcolor="#375a7f"]
+  Split [label="Train/Val/Test"]
+  Norm  [label="Normalise"]
+  Batch [label="DataLoader", fillcolor="#1a4a3a", color="#00bc8c"]
+
+  Raw -> Split -> Norm -> Batch
+}
+```
+
+---
+
+## Baselines
+
+| Baseline | Description | Reference |
+|----------|-------------|-----------|
+| Linear | Logistic regression | scikit-learn |
+| MLP-vanilla | MLP without key components | this repo |
+| [SotA method] | [description] | [citation] |
+
+- All baselines trained with identical optimiser, lr, and seed
+- Hyperparameters for each baseline tuned with the same Optuna budget
+
+---
+
+## Experiment Suite
+
+::: {.card-grid}
+<div class="nav-card">
+<a href="main.qmd">Main Experiment</a>
+<p>Full model vs. all baselines on held-out test set</p>
+</div>
+<div class="nav-card">
+<a href="ablation.qmd">Ablation Study</a>
+<p>Component-by-component contribution analysis</p>
+</div>
+<div class="nav-card">
+<a href="hyperparam.qmd">HP Sensitivity</a>
+<p>Effect of key hyperparameters on performance</p>
+</div>
+:::
+
+```{dot}
+//| label: fig-exp-nav
+//| fig-cap: "Experiment types and their primary metrics"
+//| fig-width: 7
+//| fig-height: 2.8
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.6, nodesep=0.45]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph col1 {
+    rank=same
+    E1 [label="Main Expt",  fillcolor="#375a7f"]
+    E2 [label="Ablation",   fillcolor="#375a7f"]
+    E3 [label="HP Search",  fillcolor="#375a7f"]
+  }
+  subgraph col2 {
+    rank=same
+    M1 [label="Primary Metric"]
+    M2 [label="Delta per\nComponent"]
+    M3 [label="Sensitivity\nCurve"]
+  }
+  subgraph col3 {
+    rank=same
+    Out [label="Validated\nClaims", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+
+  E1 -> M1  E2 -> M2  E3 -> M3
+  M1 -> Out  M2 -> Out  M3 -> Out
+}
+```

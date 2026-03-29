@@ -1,0 +1,130 @@
+---
+title: "Component B"
+---
+
+> **Rename this page** to reflect the actual component (e.g., "Decoder", "Classifier Head", "Loss Module").
+
+## Role and Responsibility
+
+- **What it does**: [single-sentence description of the transformation performed]
+- **Input**: shape, dtype, semantics — typically the output of Component A
+- **Output**: shape, dtype, semantics — typically logits or structured predictions
+- **Contract with Component A**: [describe interface dependency]
+
+```{dot}
+//| label: fig-comp-b-role
+//| fig-cap: "Component B: data flow from Component A to output"
+//| fig-width: 7
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.55, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  CompA [label="Component A\noutput",   fillcolor="#375a7f"]
+  Op1   [label="Op 1"]
+  Op2   [label="Op 2"]
+  Logit [label="Logits\n[B × C]",       fillcolor="#1a4a3a", color="#00bc8c"]
+
+  CompA -> Op1 -> Op2 -> Logit
+}
+```
+
+---
+
+## Internal Structure
+
+- **Projection**: maps from Component A's embedding space to output space
+- **Head type**: [linear / MLP / attention] — justify with empirical or theoretical argument
+- **Output activation**: [softmax for probabilities / none for logits passed to loss]
+- **Calibration**: [e.g., temperature scaling applied at inference]
+
+```{dot}
+//| label: fig-comp-b-internals
+//| fig-cap: "Component B internal structure"
+//| fig-width: 6.5
+//| fig-height: 3.2
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.5, nodesep=0.55]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    Emb [label="Embedding", fillcolor="#375a7f"]
+  }
+  subgraph row2 {
+    rank=same
+    Proj  [label="Projection"]
+    Norm  [label="LayerNorm"]
+  }
+  subgraph row3 {
+    rank=same
+    Logit [label="Logits", fillcolor="#1a4a3a", color="#00bc8c"]
+    Prob  [label="Probs",  fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+
+  Emb -> Proj
+  Emb -> Norm
+  Proj -> Logit
+  Norm -> Prob
+}
+```
+
+---
+
+## Key Design Decisions
+
+- **Why not multi-layer head**: single linear layer reduces overfitting given [dataset size]
+- **Loss function**: [e.g., CrossEntropyLoss for classification / MSE for regression] — handles class imbalance via [weights / focal]
+- **Inference contract**: `predict_step` returns `{"pred": Tensor, "prob": Tensor, "meta": {...}}`
+
+```{dot}
+//| label: fig-comp-b-inference
+//| fig-cap: "Inference output contract"
+//| fig-width: 7
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.6, nodesep=0.45]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  Model [label="LitModule",   fillcolor="#375a7f"]
+  Pred  [label="pred: Tensor", fillcolor="#1a4a3a", color="#00bc8c"]
+  Prob  [label="prob: Tensor", fillcolor="#1a4a3a", color="#00bc8c"]
+  Meta  [label="meta: dict",  fillcolor="#1a4a3a", color="#00bc8c"]
+
+  Model -> Pred
+  Model -> Prob
+  Model -> Meta
+}
+```
+
+---
+
+## Configuration
+
+Key parameters exposed through Hydra config:
+
+| Parameter | Default | Range | Effect |
+|-----------|---------|-------|--------|
+| `output_dim` | auto | n_classes | output space size |
+| `loss_weight` | None | [0, 1] per class | class-imbalance handling |
+| `label_smoothing` | 0.0 | [0.0, 0.2] | regularisation via soft targets |
+
+```bash
+# Override example
+python -m src.main method.label_smoothing=0.1
+```

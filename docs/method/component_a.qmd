@@ -1,0 +1,148 @@
+---
+title: "Component A"
+---
+
+> **Rename this page** to reflect the actual component (e.g., "Encoder", "Feature Extractor", "Attention Module").
+
+## Role and Responsibility
+
+- **What it does**: [single-sentence description of the transformation performed]
+- **Input**: shape, dtype, semantics of the tensor received
+- **Output**: shape, dtype, semantics of the tensor produced
+- **Invariant**: property that holds regardless of input distribution
+
+```{dot}
+//| label: fig-comp-a-role
+//| fig-cap: "Component A: data flow"
+//| fig-width: 7
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.55, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  In  [label="Input\n[B × D_in]",  fillcolor="#375a7f"]
+  Op1 [label="Op 1"]
+  Op2 [label="Op 2"]
+  Out [label="Output\n[B × D_out]", fillcolor="#1a4a3a", color="#00bc8c"]
+
+  In -> Op1 -> Op2 -> Out
+}
+```
+
+---
+
+## Internal Structure
+
+- **Layers**: list each sub-layer in order with its output shape
+- **Normalisation**: LayerNorm applied [before / after] each block — avoids batch-size sensitivity
+- **Activation**: [e.g., GELU / ReLU / SiLU] — justify choice
+- **Skip connections**: [yes/no] — describe residual path if applicable
+
+```{dot}
+//| label: fig-comp-a-internals
+//| fig-cap: "Internal structure with skip connections"
+//| fig-width: 6.5
+//| fig-height: 3.5
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.5, nodesep=0.55]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    In [label="Input", fillcolor="#375a7f"]
+  }
+  subgraph row2 {
+    rank=same
+    Norm  [label="LayerNorm"]
+    Skip1 [label="(identity)", style="dashed", color="#6c757d", fontcolor="#868e96"]
+  }
+  subgraph row3 {
+    rank=same
+    Linear [label="Linear"]
+    Act    [label="Activation"]
+  }
+  subgraph row4 {
+    rank=same
+    Out [label="Output", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+
+  In -> Norm -> Linear -> Act -> Out
+  In -> Skip1 -> Out [style=dashed, color="#6c757d"]
+  Norm -> Act
+}
+```
+
+---
+
+## Key Design Decisions
+
+- **Why LayerNorm over BatchNorm**: stable training with batch size = 1 during inference
+- **Why [activation]**: [empirical reason or theoretical justification]
+- **Initialisation**: [e.g., Kaiming uniform for linear layers]
+- **Alternatives considered**: [alternative A] rejected because [reason]; [alternative B] rejected because [reason]
+
+```{dot}
+//| label: fig-comp-a-decisions
+//| fig-cap: "Design space: chosen path vs. alternatives"
+//| fig-width: 7
+//| fig-height: 2.8
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.6, nodesep=0.45]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph col1 {
+    rank=same
+    Alt1 [label="Alt A", fillcolor="#4a2040", color="#e74c3c"]
+    Chosen [label="Chosen Design", fillcolor="#1a4a3a", color="#00bc8c"]
+    Alt2 [label="Alt B", fillcolor="#4a2040", color="#e74c3c"]
+  }
+  subgraph col2 {
+    rank=same
+    Perf [label="Performance"]
+    Cost [label="Complexity"]
+  }
+  subgraph col3 {
+    rank=same
+    Decision [label="Final Choice", fillcolor="#375a7f"]
+  }
+
+  Alt1   -> Cost [style=dashed, color="#e74c3c"]
+  Chosen -> Perf
+  Chosen -> Cost
+  Alt2   -> Perf [style=dashed, color="#e74c3c"]
+  Perf   -> Decision
+  Cost   -> Decision
+}
+```
+
+---
+
+## Configuration
+
+Key parameters exposed through Hydra config (`configs/method/*.yaml`):
+
+| Parameter | Default | Range | Effect |
+|-----------|---------|-------|--------|
+| `hidden_dim` | — | [32, 512] | capacity vs. overfitting |
+| `num_layers` | — | [1, 8] | depth vs. training stability |
+| `dropout` | — | [0.0, 0.5] | regularisation strength |
+
+```bash
+# Override example
+python -m src.main method.hidden_dim=256 method.num_layers=4
+```

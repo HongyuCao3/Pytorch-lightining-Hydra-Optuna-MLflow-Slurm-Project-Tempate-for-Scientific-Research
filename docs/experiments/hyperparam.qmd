@@ -1,0 +1,192 @@
+---
+title: "Hyperparameter Sensitivity"
+---
+
+## Design
+
+- **Goal**: understand how sensitive the model is to key hyperparameters and find the optimal config
+- **Claim addressed**: Claim 3 — the method is robust across a reasonable HP range
+- **Search tool**: Optuna via `mode=optuna`; [N] trials, TPE sampler, MedianPruner
+- **Run command**:
+
+```bash
+python -m src.main mode=optuna optuna.n_trials=100 optuna.study_name=hp_study
+# Results logged to MLflow and Optuna storage (outputs/optuna/)
+```
+
+```{dot}
+//| label: fig-hp-design
+//| fig-cap: "Hyperparameter search: sampler → trial → pruner → best config"
+//| fig-width: 7
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.5, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  Sampler [label="TPE Sampler", fillcolor="#375a7f"]
+  Trial   [label="Trial Run"]
+  Pruner  [label="MedianPruner", fillcolor="#4a2040", color="#e74c3c"]
+  Best    [label="Best Config",  fillcolor="#1a4a3a", color="#00bc8c"]
+
+  Sampler -> Trial -> Pruner
+  Pruner  -> Best  [label=" survivors", fontcolor="#adb5bd", fontsize=9]
+}
+```
+
+---
+
+## Hyperparameter Space
+
+| Parameter | Type | Range / Choices | Sampler |
+|-----------|------|----------------|---------|
+| `lr` | float (log) | [1e-4, 1e-1] | log-uniform |
+| `hidden_dim` | int | {64, 128, 256, 512} | categorical |
+| `num_layers` | int | [1, 6] | uniform int |
+| `dropout` | float | [0.0, 0.5] | uniform |
+| `weight_decay` | float (log) | [1e-5, 1e-2] | log-uniform |
+
+```{dot}
+//| label: fig-hp-space
+//| fig-cap: "Hyperparameter space structure"
+//| fig-width: 7
+//| fig-height: 2.8
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.5, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    Arch [label="Architecture",  fillcolor="#375a7f"]
+    Opt  [label="Optimisation",  fillcolor="#375a7f"]
+    Reg  [label="Regularisation",fillcolor="#375a7f"]
+  }
+  subgraph row2 {
+    rank=same
+    H1 [label="hidden_dim\nnum_layers"]
+    H2 [label="lr\nweight_decay"]
+    H3 [label="dropout\nlabel_smooth"]
+  }
+
+  Arch -> H1  Opt -> H2  Reg -> H3
+}
+```
+
+---
+
+## Results
+
+> Fill in after running. Summarise the most important findings.
+
+### Best Configuration Found
+
+```yaml
+# Best trial config (from Optuna)
+lr: <value>
+hidden_dim: <value>
+num_layers: <value>
+dropout: <value>
+weight_decay: <value>
+```
+
+- **Best trial metric**: [value] at trial #[N]
+- **Improvement over default config**: [Δ metric]
+
+### Sensitivity Analysis
+
+| Parameter | Low sensitivity | High sensitivity | Interaction with |
+|-----------|----------------|-----------------|-----------------|
+| `lr` | — | — | `weight_decay` |
+| `hidden_dim` | — | — | `num_layers` |
+| `dropout` | — | — | dataset size |
+
+```{dot}
+//| label: fig-sensitivity
+//| fig-cap: "Parameter sensitivity: high impact vs. safe defaults"
+//| fig-width: 7
+//| fig-height: 2.8
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.6, nodesep=0.45]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.6, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph col1 {
+    rank=same
+    HS1 [label="lr (high)",      fillcolor="#4a2040", color="#e74c3c"]
+    HS2 [label="hidden_dim\n(medium)", fillcolor="#375a7f"]
+    LS1 [label="dropout (low)",  fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+  subgraph col2 {
+    rank=same
+    Tune [label="Must Tune"]
+    Safe [label="Safe Default"]
+  }
+  subgraph col3 {
+    rank=same
+    Cfg [label="Final Config", fillcolor="#375a7f"]
+  }
+
+  HS1 -> Tune  HS2 -> Tune
+  LS1 -> Safe
+  Tune -> Cfg  Safe -> Cfg
+}
+```
+
+---
+
+## Robustness Check
+
+- **Stability across seeds**: run best config with seeds {42, 0, 1, 7, 99}; report std
+- **Robustness claim**: method achieves [metric] ± [σ] — variance is acceptable for deployment
+- **Failure modes**: performance degrades below [lr_min] or above [hidden_dim_max]
+
+```{dot}
+//| label: fig-robustness
+//| fig-cap: "Robustness: seed variance and failure boundary"
+//| fig-width: 7
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.5, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  Seeds  [label="K Seeds",      fillcolor="#375a7f"]
+  Mean   [label="Mean ± Std"]
+  CI     [label="95% CI"]
+  Claim3 [label="Claim 3\nConfirmed", fillcolor="#1a4a3a", color="#00bc8c"]
+
+  Seeds -> Mean -> CI -> Claim3
+}
+```
+
+---
+
+## Recommended Config
+
+```bash
+# Recommended production config derived from HP search
+python -m src.main \
+  dataset=<dataset> \
+  method=<method> \
+  method.lr=<best_lr> \
+  method.hidden_dim=<best_hidden> \
+  method.num_layers=<best_layers> \
+  method.dropout=<best_dropout>
+```

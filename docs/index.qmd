@@ -1,0 +1,124 @@
+---
+title: "Research Dashboard"
+---
+
+## Project Overview
+
+> **Replace this tagline** with one sentence stating the core contribution.
+
+- **Problem**: [Domain] + [specific challenge] — why it matters now
+- **Approach**: [Key method idea] — what makes it different
+- **Outcome**: Target metric improvement over baseline on [dataset/benchmark]
+
+```{dot}
+//| label: fig-pipeline
+//| fig-cap: "End-to-end research pipeline"
+//| fig-width: 7
+//| fig-height: 3.5
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.55, nodesep=0.55]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.6, height=0.45, margin="0.15,0.08"]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    Task [label="Task Def", fillcolor="#375a7f"]
+    Lit  [label="Literature", fillcolor="#375a7f"]
+    Claim [label="Claims", fillcolor="#375a7f"]
+  }
+  subgraph row2 {
+    rank=same
+    Method [label="Method", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+  subgraph row3 {
+    rank=same
+    Main  [label="Main Expt", fillcolor="#4a2040"]
+    Abl   [label="Ablation", fillcolor="#4a2040"]
+    HP    [label="HP Search", fillcolor="#4a2040"]
+  }
+
+  Task  -> Method
+  Lit   -> Method
+  Claim -> Method
+  Method -> Main
+  Method -> Abl
+  Method -> HP
+}
+```
+
+---
+
+## Navigation
+
+::: {.card-grid}
+<div class="nav-card">
+<a href="task_definition.qmd">Task Definition</a>
+<p>Problem scope, RQs, evaluation criteria</p>
+</div>
+<div class="nav-card">
+<a href="literature_review.qmd">Literature Review</a>
+<p>Related work, gaps, positioning</p>
+</div>
+<div class="nav-card">
+<a href="claims.qmd">Claims</a>
+<p>Hypotheses, evidence, falsification</p>
+</div>
+<div class="nav-card">
+<a href="method/overview.qmd">Method</a>
+<p>Architecture, components, design choices</p>
+</div>
+<div class="nav-card">
+<a href="experiments/overview.qmd">Experiments</a>
+<p>Setup, results, analysis</p>
+</div>
+:::
+
+---
+
+## Key Results at a Glance
+
+::: {.metric-row}
+<div class="metric-badge">
+<div class="value">—</div>
+<div class="label">Primary Metric</div>
+</div>
+<div class="metric-badge">
+<div class="value">—</div>
+<div class="label">vs. Baseline Δ</div>
+</div>
+<div class="metric-badge">
+<div class="value">—</div>
+<div class="label">Dataset Size</div>
+</div>
+<div class="metric-badge">
+<div class="value">—</div>
+<div class="label">Model Params</div>
+</div>
+:::
+
+> Fill in final numbers after main experiment is complete.
+
+---
+
+## Reproduction Quickstart
+
+```bash
+# 1. Setup
+pip install -r requirements.txt
+
+# 2. Debug run (fast, no logging)
+python -m src.main mode=debug dataset=<dataset> method=<method>
+
+# 3. Full training
+python -m src.main dataset=<dataset> method=<method>
+
+# 4. Hyperparameter search
+python -m src.main mode=optuna optuna.n_trials=50
+
+# 5. Inference
+python -m src.main mode=infer inference.checkpoint_path=<ckpt>
+```

@@ -1,0 +1,137 @@
+---
+title: "Main Experiment"
+---
+
+## Setup
+
+- **Goal**: compare the full proposed method against all baselines on the held-out test set
+- **Claim addressed**: Claim 1 — the full model outperforms [best baseline] by ≥ [δ] on [metric]
+- **Run command**:
+
+```bash
+python -m src.main dataset=<dataset> method=<method>
+# MLflow run logged to: mlruns/
+```
+
+```{dot}
+//| label: fig-main-setup
+//| fig-cap: "Main experiment: training and evaluation flow"
+//| fig-width: 7
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.5, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  Train [label="Train Set", fillcolor="#375a7f"]
+  Val   [label="Val Set",   fillcolor="#375a7f"]
+  Model [label="Best Ckpt"]
+  Test  [label="Test Set",  fillcolor="#4a2040", color="#e74c3c"]
+  Score [label="Final Score", fillcolor="#1a4a3a", color="#00bc8c"]
+
+  Train -> Model
+  Val   -> Model [label=" early stop", fontcolor="#adb5bd", fontsize=9]
+  Model -> Test -> Score
+}
+```
+
+---
+
+## Results
+
+> Fill in after running the experiment. Report mean ± std across [K] random seeds.
+
+| Method | Metric A | Metric B | Metric C |
+|--------|----------|----------|----------|
+| Linear baseline | — | — | — |
+| MLP-vanilla | — | — | — |
+| [SotA method] | — | — | — |
+| **Proposed (ours)** | **—** | **—** | **—** |
+
+- Statistical test: [test name], p = [value] vs. best baseline
+- Effect size: Cohen's d = [value] / Δ = [absolute improvement]
+
+```{dot}
+//| label: fig-main-results
+//| fig-cap: "Result comparison: baseline vs. proposed"
+//| fig-width: 7
+//| fig-height: 2.8
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.6, nodesep=0.45]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph col1 {
+    rank=same
+    BL1 [label="Linear",      fillcolor="#4a2040"]
+    BL2 [label="MLP-vanilla", fillcolor="#4a2040"]
+    BL3 [label="SotA",        fillcolor="#4a2040"]
+  }
+  subgraph col2 {
+    rank=same
+    Our [label="Proposed", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+  subgraph col3 {
+    rank=same
+    Win [label="Claim 1\nConfirmed", fillcolor="#375a7f"]
+  }
+
+  BL1 -> Our [label=" Δ+?", fontcolor="#adb5bd", fontsize=9]
+  BL2 -> Our [label=" Δ+?", fontcolor="#adb5bd", fontsize=9]
+  BL3 -> Our [label=" Δ+?", fontcolor="#adb5bd", fontsize=9]
+  Our -> Win
+}
+```
+
+---
+
+## Analysis
+
+- **Error analysis**: which samples does the model get wrong? Any systematic pattern?
+- **Confusion matrix**: large off-diagonal entries indicate [class-pair confusion] — [explanation]
+- **Per-class performance**: [class with lowest recall] suffers from [hypothesised reason]
+- **Calibration**: reliability diagram shows [over/under-confident in what range]
+
+```{dot}
+//| label: fig-analysis
+//| fig-cap: "Error analysis pipeline"
+//| fig-width: 7
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.5, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  Preds  [label="Predictions",  fillcolor="#375a7f"]
+  Conf   [label="Confusion\nMatrix"]
+  PerCls [label="Per-Class\nMetrics"]
+  Calib  [label="Calibration",  fillcolor="#1a4a3a", color="#00bc8c"]
+
+  Preds -> Conf -> PerCls -> Calib
+}
+```
+
+---
+
+## MLflow Tracking
+
+All runs automatically logged to `mlruns/`. To view:
+
+```bash
+mlflow ui --backend-store-uri mlruns/
+# Open http://localhost:5000
+```
+
+Key logged artifacts: `config.yaml`, confusion matrix PNG, per-class metrics CSV, checkpoint path.

@@ -1,0 +1,170 @@
+---
+title: "Method Overview"
+---
+
+## Architecture Summary
+
+- **Input pipeline**: preprocessing → feature extraction → normalisation
+- **Core model**: [e.g., MLP with LayerNorm + residual connections]
+- **Training objective**: loss function + regularisation terms
+- **Inference path**: forward pass → postprocessing → structured output
+
+```{dot}
+//| label: fig-arch
+//| fig-cap: "High-level architecture: input → model → output"
+//| fig-width: 7
+//| fig-height: 3.5
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.55, nodesep=0.55]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.6, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    Raw   [label="Raw Input", fillcolor="#375a7f"]
+    Meta  [label="Metadata", fillcolor="#375a7f"]
+    Prior [label="Prior / Config", fillcolor="#375a7f"]
+  }
+  subgraph row2 {
+    rank=same
+    Comp_A [label="Component A"]
+    Comp_B [label="Component B"]
+  }
+  subgraph row3 {
+    rank=same
+    Loss  [label="Loss", fillcolor="#4a2040"]
+    Out   [label="Prediction", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+
+  Raw   -> Comp_A
+  Meta  -> Comp_A
+  Meta  -> Comp_B
+  Prior -> Comp_B
+  Comp_A -> Loss
+  Comp_A -> Out
+  Comp_B -> Loss
+  Comp_B -> Out
+}
+```
+
+---
+
+## Design Principles
+
+- **Modularity**: each component has a single responsibility; components are swappable
+- **Reproducibility**: all stochastic elements seeded through Hydra config
+- **Debuggability**: `mode=debug` runs 2 batches end-to-end with full logging
+- **Extensibility**: new methods added via `@register("name")` without touching train loop
+
+```{dot}
+//| label: fig-principles
+//| fig-cap: "Design principle hierarchy"
+//| fig-width: 6.5
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.6, nodesep=0.45]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.6, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  Modular   [label="Modularity",      fillcolor="#375a7f"]
+  Repro     [label="Reproducibility", fillcolor="#375a7f"]
+  Extend    [label="Extensibility",   fillcolor="#375a7f"]
+  Outcome   [label="Reliable Results", fillcolor="#1a4a3a", color="#00bc8c", width=1.8]
+
+  Modular -> Outcome
+  Repro   -> Outcome
+  Extend  -> Outcome
+}
+```
+
+---
+
+## Components
+
+| Component | Role | Key file | Config key |
+|-----------|------|----------|------------|
+| Component A | [describe role] | `src/methods/*/model.py` | `method.comp_a.*` |
+| Component B | [describe role] | `src/methods/*/lit_module.py` | `method.comp_b.*` |
+| DataModule | data loading + splits | `src/data/*.py` | `dataset.*` |
+| Trainer | training loop + callbacks | `src/train.py` | `trainer.*` |
+
+```{dot}
+//| label: fig-components
+//| fig-cap: "Component interaction at runtime"
+//| fig-width: 7
+//| fig-height: 3.2
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.55, nodesep=0.4]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph col1 {
+    rank=same
+    DM  [label="DataModule",  fillcolor="#375a7f"]
+    Cfg [label="Hydra Config", fillcolor="#375a7f"]
+  }
+  subgraph col2 {
+    rank=same
+    CA [label="Component A"]
+    CB [label="Component B"]
+  }
+  subgraph col3 {
+    rank=same
+    Trainer [label="Trainer", fillcolor="#1a4a3a", color="#00bc8c"]
+    MLflow  [label="MLflow",  fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+
+  DM  -> CA
+  DM  -> CB
+  Cfg -> CA
+  Cfg -> CB
+  CA -> Trainer
+  CB -> Trainer
+  Trainer -> MLflow
+}
+```
+
+---
+
+## Training Flow
+
+- **Epoch loop**: `Trainer.fit()` calls `training_step` → gradient update → `validation_step`
+- **Checkpointing**: best model saved by `val_loss` (lower is better); path in `latest_checkpoint.json`
+- **LR schedule**: `ReduceLROnPlateau` — no dependency on `max_epochs`
+- **Early stopping**: patience = [N] epochs on `val_loss`
+
+```{dot}
+//| label: fig-train-flow
+//| fig-cap: "Training loop control flow"
+//| fig-width: 7
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.5, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.5, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  Batch [label="Batch",    fillcolor="#375a7f"]
+  Fwd   [label="Forward",  fillcolor="#343a40"]
+  Loss  [label="Loss",     fillcolor="#4a2040", color="#e74c3c"]
+  Opt   [label="Optimiser"]
+  Ckpt  [label="Checkpoint", fillcolor="#1a4a3a", color="#00bc8c"]
+
+  Batch -> Fwd -> Loss -> Opt -> Ckpt
+}
+```

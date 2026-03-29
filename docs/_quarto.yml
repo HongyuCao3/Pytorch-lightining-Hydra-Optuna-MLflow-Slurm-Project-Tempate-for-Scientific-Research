@@ -1,0 +1,60 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "Research Project Docs"
+  page-navigation: true
+  navbar:
+    background: dark
+    foreground: light
+    left:
+      - text: "Home"
+        href: index.qmd
+    right:
+      - icon: github
+        href: https://github.com
+  sidebar:
+    style: docked
+    search: true
+    collapse-level: 1
+    background: dark
+    contents:
+      - text: "Dashboard"
+        href: index.qmd
+      - section: "Research"
+        contents:
+          - text: "Task Definition"
+            href: task_definition.qmd
+          - text: "Literature Review"
+            href: literature_review.qmd
+          - text: "Claims"
+            href: claims.qmd
+      - section: "Method"
+        contents:
+          - text: "Overview"
+            href: method/overview.qmd
+          - text: "Component A"
+            href: method/component_a.qmd
+          - text: "Component B"
+            href: method/component_b.qmd
+      - section: "Experiments"
+        contents:
+          - text: "Dashboard"
+            href: experiments/overview.qmd
+          - text: "Main Experiment"
+            href: experiments/main.qmd
+          - text: "Ablation Study"
+            href: experiments/ablation.qmd
+          - text: "Hyperparameter Sensitivity"
+            href: experiments/hyperparam.qmd
+
+format:
+  html:
+    theme: darkly
+    toc: true
+    toc-depth: 3
+    toc-title: "On this page"
+    css: styles/custom.css
+    highlight-style: github-dark
+    fig-align: center

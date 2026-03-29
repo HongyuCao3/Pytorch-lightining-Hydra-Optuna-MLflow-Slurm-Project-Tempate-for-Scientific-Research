@@ -1,0 +1,179 @@
+---
+title: "Literature Review"
+---
+
+## Research Landscape
+
+- **Foundational work**: [2–3 seminal papers] — established the core formulation
+- **Recent advances**: [3–5 papers from last 3 years] — state of the field
+- **Adjacent areas**: [methods from related tasks that could transfer]
+- **Negative results**: any published failures that bound what works
+
+```{dot}
+//| label: fig-landscape
+//| fig-cap: "Literature landscape: foundations → approaches → this work"
+//| fig-width: 7
+//| fig-height: 3.5
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.55, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.6, height=0.42, margin="0.15,0.08"]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    F1 [label="Foundation A", fillcolor="#375a7f"]
+    F2 [label="Foundation B", fillcolor="#375a7f"]
+    F3 [label="Foundation C", fillcolor="#375a7f"]
+  }
+  subgraph row2 {
+    rank=same
+    A1 [label="Approach X"]
+    A2 [label="Approach Y"]
+    A3 [label="Approach Z"]
+  }
+  subgraph row3 {
+    rank=same
+    G1 [label="Gap 1", fillcolor="#4a2040", color="#e74c3c"]
+    G2 [label="Gap 2", fillcolor="#4a2040", color="#e74c3c"]
+    G3 [label="Gap 3", fillcolor="#4a2040", color="#e74c3c"]
+  }
+  subgraph row4 {
+    rank=same
+    Us [label="This Work", fillcolor="#1a4a3a", color="#00bc8c", width=4.8]
+  }
+
+  F1 -> A1  F2 -> A2  F3 -> A3
+  A1 -> G1  A2 -> G2  A3 -> G3
+  G1 -> Us  G2 -> Us  G3 -> Us
+}
+```
+
+---
+
+## Key Papers
+
+For each paper, fill in: **what it proposes**, **why it matters**, and **its limitation**
+relative to this work. Use citation keys from `references.bib`.
+
+- **[@paper2020a]** — [one-line summary]. Limitation: [gap this work addresses]
+- **[@paper2021b]** — [one-line summary]. Limitation: [gap this work addresses]
+- **[@paper2022c]** — [one-line summary]. Limitation: [gap this work addresses]
+- **[@paper2023d]** — [one-line summary]. Limitation: [gap this work addresses]
+- **[@paper2024e]** — [one-line summary]. Limitation: [gap this work addresses]
+
+```{dot}
+//| label: fig-papers
+//| fig-cap: "Paper dependency graph (arrows = builds-on)"
+//| fig-width: 7
+//| fig-height: 3.2
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.6, nodesep=0.4]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph col1 {
+    rank=same
+    P1 [label="[Ref A]", fillcolor="#375a7f"]
+    P2 [label="[Ref B]", fillcolor="#375a7f"]
+  }
+  subgraph col2 {
+    rank=same
+    P3 [label="[Ref C]"]
+    P4 [label="[Ref D]"]
+  }
+  subgraph col3 {
+    rank=same
+    Us [label="This Work", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+
+  P1 -> P3  P1 -> P4
+  P2 -> P3  P2 -> P4
+  P3 -> Us  P4 -> Us
+}
+```
+
+---
+
+## Gap Analysis
+
+- **Methodological gap**: existing methods fail at [specific scenario] — motivates the core technique
+- **Empirical gap**: no systematic study of [factor X] on [dataset type] — motivates ablation design
+- **Scalability gap**: prior work evaluated only at [scale] — motivates efficiency experiments
+
+```{dot}
+//| label: fig-gaps
+//| fig-cap: "Gap → contribution mapping"
+//| fig-width: 6.5
+//| fig-height: 2.8
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.6, nodesep=0.45]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph col1 {
+    rank=same
+    G1 [label="Method Gap", fillcolor="#4a2040", color="#e74c3c"]
+    G2 [label="Empirical Gap", fillcolor="#4a2040", color="#e74c3c"]
+    G3 [label="Scale Gap", fillcolor="#4a2040", color="#e74c3c"]
+  }
+  subgraph col2 {
+    rank=same
+    C1 [label="Contribution 1", fillcolor="#1a4a3a", color="#00bc8c"]
+    C2 [label="Contribution 2", fillcolor="#1a4a3a", color="#00bc8c"]
+    C3 [label="Contribution 3", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+
+  G1 -> C1  G2 -> C2  G3 -> C3
+}
+```
+
+---
+
+## Positioning
+
+- **vs. [Method A]**: same problem, different mechanism — we outperform by [margin] on [metric]
+- **vs. [Method B]**: different problem formulation — ours is more general because [reason]
+- **vs. [Method C]**: concurrent work — key difference is [design choice X]
+
+```{dot}
+//| label: fig-position
+//| fig-cap: "Positioning relative to closest competitors"
+//| fig-width: 6.5
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.5, nodesep=0.55]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    MA [label="Method A"]
+    MB [label="Method B"]
+    MC [label="Method C"]
+  }
+  subgraph row2 {
+    rank=same
+    Us [label="This Work", fillcolor="#1a4a3a", color="#00bc8c", width=5.0]
+  }
+
+  MA -> Us [label="  generalises", fontcolor="#adb5bd", fontsize=9]
+  MB -> Us [label="  extends", fontcolor="#adb5bd", fontsize=9]
+  MC -> Us [label="  improves", fontcolor="#adb5bd", fontsize=9]
+}
+```

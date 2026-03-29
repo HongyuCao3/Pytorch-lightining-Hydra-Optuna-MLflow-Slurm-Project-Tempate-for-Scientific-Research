@@ -1,0 +1,176 @@
+---
+title: "Task Definition"
+---
+
+## Problem Statement
+
+- **Domain**: [Research domain — e.g., tabular classification, sequence modeling, graph learning]
+- **Input**: describe modality, shape, and expected distribution
+- **Output**: describe target space (class labels, continuous values, structured objects)
+- **Why it is hard**: state the core technical difficulty in ≤ 2 bullets
+
+```{dot}
+//| label: fig-problem
+//| fig-cap: "Problem framing: from domain to evaluation"
+//| fig-width: 7
+//| fig-height: 3.2
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.5, nodesep=0.55]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.6, height=0.42, margin="0.15,0.08"]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    Domain [label="Domain", fillcolor="#375a7f"]
+    Input  [label="Input Data", fillcolor="#375a7f"]
+    Output [label="Target Output", fillcolor="#375a7f"]
+  }
+  subgraph row2 {
+    rank=same
+    Constraint [label="Constraints", fillcolor="#343a40"]
+  }
+  subgraph row3 {
+    rank=same
+    M1 [label="Metric A"]
+    M2 [label="Metric B"]
+    M3 [label="Metric C"]
+  }
+
+  Domain -> Constraint
+  Input  -> Constraint
+  Output -> Constraint
+  Constraint -> M1
+  Constraint -> M2
+  Constraint -> M3
+}
+```
+
+---
+
+## Research Questions
+
+- **RQ1**: [Primary RQ — the main question this work answers]
+- **RQ2**: [Secondary RQ — e.g., what factors drive the result?]
+- **RQ3**: [Tertiary RQ — e.g., does the method generalise?]
+
+Each RQ should be falsifiable and tied to at least one metric in the evaluation protocol.
+
+```{dot}
+//| label: fig-rq
+//| fig-cap: "Research questions mapped to evaluation protocol"
+//| fig-width: 7
+//| fig-height: 3.2
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.6, nodesep=0.45]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.5, height=0.42, margin="0.15,0.08"]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph col1 {
+    rank=same
+    RQ1 [label="RQ1", fillcolor="#375a7f"]
+    RQ2 [label="RQ2", fillcolor="#375a7f"]
+    RQ3 [label="RQ3", fillcolor="#375a7f"]
+  }
+  subgraph col2 {
+    rank=same
+    H1 [label="Hypothesis 1"]
+    H2 [label="Hypothesis 2"]
+    H3 [label="Hypothesis 3"]
+  }
+  subgraph col3 {
+    rank=same
+    E1 [label="Experiment 1", fillcolor="#1a4a3a", color="#00bc8c"]
+    E2 [label="Experiment 2", fillcolor="#1a4a3a", color="#00bc8c"]
+    E3 [label="Experiment 3", fillcolor="#1a4a3a", color="#00bc8c"]
+  }
+
+  RQ1 -> H1 -> E1
+  RQ2 -> H2 -> E2
+  RQ3 -> H3 -> E3
+}
+```
+
+---
+
+## Scope and Constraints
+
+- **In scope**: list what this work explicitly covers
+- **Out of scope**: list what is intentionally excluded
+- **Assumptions**: list simplifying assumptions (e.g., i.i.d. data, fixed compute budget)
+
+```{dot}
+//| label: fig-scope
+//| fig-cap: "Scope boundary"
+//| fig-width: 6
+//| fig-height: 2.8
+digraph G {
+  bgcolor="transparent"
+  rankdir=TB
+  graph [ranksep=0.5, nodesep=0.6]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.55, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  subgraph row1 {
+    rank=same
+    In [label="In Scope", fillcolor="#1a4a3a", color="#00bc8c"]
+    Assume [label="Assumptions", fillcolor="#375a7f"]
+    Out [label="Out of Scope", fillcolor="#4a2040", color="#e74c3c"]
+  }
+  subgraph row2 {
+    rank=same
+    Budget [label="Compute Budget"]
+    Data   [label="Data Protocol"]
+    Metric [label="Eval Metric"]
+  }
+
+  In     -> Data
+  Assume -> Budget
+  Assume -> Data
+  Out    -> Metric [style=dashed, color="#e74c3c"]
+  Data   -> Metric
+  Budget -> Metric
+}
+```
+
+---
+
+## Evaluation Protocol
+
+- **Primary metric**: [e.g., macro-F1, RMSE, mAP] — justify why this is the right metric
+- **Secondary metrics**: [e.g., per-class accuracy, latency, memory] — diagnostic value
+- **Baseline(s)**: the minimum bar to beat (e.g., linear model, published SOTA)
+- **Dataset split**: train / val / test ratios; any k-fold cross-validation details
+- **Statistical testing**: [e.g., paired t-test, Wilcoxon, bootstrap CIs] — report p-value threshold
+
+```{dot}
+//| label: fig-eval
+//| fig-cap: "Evaluation chain: data → model → metric → decision"
+//| fig-width: 7
+//| fig-height: 2.4
+digraph G {
+  bgcolor="transparent"
+  rankdir=LR
+  graph [ranksep=0.5, nodesep=0.5]
+  node [style=filled, fillcolor="#2c3035", color="#4a9eda",
+        fontcolor="#f8f9fa", fontname="Arial", fontsize=11,
+        shape=box, width=1.5, height=0.42]
+  edge [color="#6c757d", penwidth=1.4]
+
+  Data [label="Test Set", fillcolor="#375a7f"]
+  Model [label="Trained Model"]
+  Primary [label="Primary\nMetric", fillcolor="#1a4a3a", color="#00bc8c"]
+  Decision [label="Accept /\nReject", fillcolor="#4a2040"]
+
+  Data -> Model -> Primary -> Decision
+}
+```

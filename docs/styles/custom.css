@@ -1,0 +1,108 @@
+/* ── Graphviz / SVG transparency ── */
+.cell-output-display svg,
+.quarto-figure svg {
+  background: transparent !important;
+}
+
+/* ── Page navigation (prev / next) ── */
+.page-navigation {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #495057;
+}
+
+.page-navigation .nav-page a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  border: 1px solid #495057;
+  border-radius: 6px;
+  color: #f8f9fa;
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: background-color 0.18s, border-color 0.18s;
+}
+
+.page-navigation .nav-page a:hover {
+  background-color: #375a7f;
+  border-color: #4a7cad;
+}
+
+/* ── Dashboard nav cards ── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 1rem;
+  margin: 1.2rem 0;
+}
+
+.nav-card {
+  background: #2c3035;
+  border: 1px solid #495057;
+  border-radius: 8px;
+  padding: 1.4rem 1rem;
+  text-align: center;
+  transition: border-color 0.18s, transform 0.12s;
+}
+
+.nav-card:hover {
+  border-color: #375a7f;
+  transform: translateY(-3px);
+}
+
+.nav-card a {
+  color: #f8f9fa;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.nav-card p {
+  color: #adb5bd;
+  font-size: 0.82rem;
+  margin: 0.4rem 0 0;
+}
+
+/* ── Metric badges on dashboard ── */
+.metric-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+
+.metric-badge {
+  background: #343a40;
+  border: 1px solid #495057;
+  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  text-align: center;
+  min-width: 110px;
+}
+
+.metric-badge .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #3498db;
+  line-height: 1.2;
+}
+
+.metric-badge .label {
+  font-size: 0.75rem;
+  color: #adb5bd;
+}
+
+/* ── Callout tweaks for dark mode ── */
+.callout {
+  border-left-width: 4px;
+}
+
+/* ── Figure caption spacing ── */
+.quarto-figure figcaption {
+  font-size: 0.82rem;
+  color: #868e96;
+  margin-top: 0.3rem;
+}
