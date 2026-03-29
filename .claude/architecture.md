@@ -27,3 +27,15 @@ methods/<name>/
 ## Extension points (LLM/Diffusion)
 - Swap `model.py` only; keep predict contract (`{"pred": Tensor, ...}`).
 - Trainer strategy (deepspeed/fsdp) configured in `configs/trainer/` only.
+
+## Observability layer
+- `src/callbacks/run_tracker.py` — `RunTrackerCallback` is a **pure data accumulator**:
+  no file I/O, no MLflow calls.  Exposes `best_value`, `best_step`, `convergence_step`,
+  `epoch_wall_times`, and `status` for consumption by `run_train`.
+- `src/utils/mlflow_utils.py` — `log_run_summary` and `log_exception_to_run` are the
+  **only permitted paths** for writing tracking artefacts from the training loop.
+  Direct `mlflow.*` calls in `train.py` are forbidden.
+- `src/scripts/aggregate_runs.py` — standalone post-hoc CLI (no Hydra, no pandas).
+  Reads MLflow runs, downloads `run_summary.json` per run, writes flat + grouped CSVs.
+- All new tracking fields must be added to the `run_summary.json` schema and documented
+  in `.claude/train.md`.

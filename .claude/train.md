@@ -25,3 +25,16 @@ def run_train(cfg: DictConfig) -> Dict[str, Any]:
 ## Constraints
 - No network structure in this file.
 - No direct DataLoader creation; always use DataModule.
+
+## Tracking contract (hard constraint)
+- `run_train` MUST instantiate `RunTrackerCallback` and include it in the callbacks list.
+- `run_train` MUST wrap `trainer.fit()` and `trainer.test()` in a try/except that:
+    1. Calls `log_exception_to_run(exc)` before re-raising.
+    2. Builds and logs `run_summary.json` (via `log_run_summary`) unconditionally,
+       even on failure.
+    3. Re-raises the original exception **after** the summary is written.
+- `run_optuna` MUST inject `optuna._trial_id = trial.number` into each per-trial cfg copy
+  so that `run_train` can embed it in the summary.
+- `run_optuna` MUST write both `optuna_summary.json` (with a `trials` list) and
+  `optuna_summary.csv` after all trials complete.
+- Never call `mlflow` directly from `train.py`; use `src/utils/mlflow_utils.py` helpers.

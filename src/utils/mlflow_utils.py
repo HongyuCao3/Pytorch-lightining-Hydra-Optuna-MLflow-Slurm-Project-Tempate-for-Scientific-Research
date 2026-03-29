@@ -89,3 +89,99 @@ def log_params(params: dict) -> None:
             mlflow.log_params(params)
     except Exception as e:
         log.warning(f"MLflow log_params failed: {e}")
+
+
+def log_run_summary(summary: dict, local_dir: str = ".") -> str:
+    """Serialize a run-summary dict to JSON, save it locally, and upload to MLflow.
+
+    The file is always written to ``<local_dir>/run_summary.json`` so that
+    callers can locate it predictably on the local filesystem regardless of
+    whether an MLflow run is active.  When an active run exists the file is
+    also uploaded under the ``summary/`` artifact sub-directory.
+
+    This function **never raises** — any error is swallowed and logged as a
+    warning so that a tracking failure can never abort a training run.
+
+    Parameters
+    ----------
+    summary:
+        Dict containing the structured run record.  All values must be JSON-
+        serialisable (use ``default=str`` internally handles datetimes, tensors
+        represented as scalars, etc.).
+    local_dir:
+        Directory where ``run_summary.json`` is written.  Defaults to ``"."``
+        which resolves to Hydra's per-run output directory during normal runs
+        and to ``tmp_path`` when tests use ``monkeypatch.chdir``.
+
+    Returns
+    -------
+    str
+        Absolute path of the written JSON file, or an empty string on failure.
+    """
+    try:
+        import json
+        from pathlib import Path
+
+        out_dir = Path(local_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "run_summary.json"
+        out_path.write_text(json.dumps(summary, indent=2, default=str), encoding="utf-8")
+        log.debug(f"Run summary written to {out_path}")
+
+        # Upload to MLflow when a run is active (reuse existing helper)
+        log_artifact_to_run(str(out_path), tag="summary")
+        return str(out_path)
+    except Exception as e:
+        log.warning(f"log_run_summary failed: {e}")
+        return ""
+
+
+def log_exception_to_run(exc: BaseException) -> None:
+    """Record a caught exception as MLflow tags and a traceback text artifact.
+
+    Intended to be called from an ``except`` block **before** re-raising.
+    Sets two MLflow tags (``run_status`` and ``exception_type``) and uploads
+    the full formatted traceback as ``summary/exception_traceback.txt``.
+
+    Safe to call even when no MLflow run is active — the call becomes a no-op.
+    This function **never raises**.
+
+    Parameters
+    ----------
+    exc:
+        The caught exception instance.  The traceback is captured via
+        ``traceback.format_exc()`` which reads the current exception context,
+        so this must be called from inside an active ``except`` block.
+    """
+    try:
+        import traceback as _tb
+        import tempfile
+        from pathlib import Path
+
+        import mlflow
+
+        if not mlflow.active_run():
+            return
+
+        tb_text = _tb.format_exc()
+
+        # Set lightweight tags visible directly in the MLflow UI
+        mlflow.set_tag("run_status", "failed")
+        mlflow.set_tag("exception_type", type(exc).__name__)
+
+        # Upload the full traceback as a text artifact for detailed post-mortem
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".txt",
+            prefix="exception_traceback_",
+            delete=False,
+            encoding="utf-8",
+        ) as f:
+            f.write(tb_text)
+            tmp_path = f.name
+
+        mlflow.log_artifact(tmp_path, artifact_path="summary")
+        Path(tmp_path).unlink(missing_ok=True)
+        log.debug(f"Exception traceback logged to MLflow for {type(exc).__name__}.")
+    except Exception as inner:
+        log.warning(f"log_exception_to_run failed silently: {inner}")
