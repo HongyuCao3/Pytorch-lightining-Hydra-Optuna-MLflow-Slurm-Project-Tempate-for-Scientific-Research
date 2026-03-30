@@ -1,0 +1,8 @@
+checkpoint_path: null
+postprocess:
+  threshold: 0.5
+analyzers:
+  - confusion_matrix
+  - per_class_metrics
+  - tsne_embedding
+output_dir: inference_outputs/

@@ -7,19 +7,9 @@ defaults:
   - logger: mlflow
   - mode: train
   - optuna: default
+  - inference: default
   - override hydra/launcher: basic
   - _self_
 
 project_name: "research-template"
 seed: 42
-
-# Inference config (used when mode=infer)
-inference:
-  checkpoint_path: null
-  postprocess:
-    threshold: 0.5
-  analyzers:
-    - confusion_matrix
-    - per_class_metrics
-    - tsne_embedding
-  output_dir: inference_outputs/
