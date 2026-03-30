@@ -53,6 +53,24 @@ project_root/
 │   ├── optuna/default.yaml
 │   └── hydra/launcher/slurm.yaml
 │
+├── docs/                              # Quarto research documentation site
+│   ├── _quarto.yml                    # site config (sidebar, theme, nav)
+│   ├── index.qmd                      # dashboard / navigation hub
+│   ├── task_definition.qmd            # research goal and scope
+│   ├── literature_review.qmd          # background and citations
+│   ├── claims.qmd                     # testable hypotheses & claim tracker
+│   ├── method/
+│   │   ├── overview.qmd               # architecture & component summary
+│   │   ├── component_a.qmd            # per-component spec
+│   │   └── component_b.qmd
+│   ├── experiments/
+│   │   ├── overview.qmd               # experiment navigation
+│   │   ├── main.qmd                   # main experiment results
+│   │   ├── ablation.qmd               # ablation study
+│   │   └── hyperparam.qmd             # hyperparameter sensitivity
+│   ├── references.bib                 # citation database
+│   └── styles/                        # custom CSS & CSL
+│
 ├── tests/
 │   ├── conftest.py                # shared Hydra fixtures
 │   ├── test_instantiation.py      # acceptance 1: instantiation checks
@@ -133,6 +151,53 @@ pytest tests/ -v
 | 5 | Optuna 3 trials | `python -m src.main mode=optuna optuna.n_trials=3` |
 | 6 | Inference + analyzers | `python -m src.main mode=infer inference.checkpoint_path=<ckpt>` |
 | 7 | SLURM submit | `python -m src.main -m hydra/launcher=slurm ...` |
+
+---
+
+## Research Documentation (Quarto)
+
+The `docs/` directory contains a **Quarto website** for structured research documentation — task definition, literature review, claims, method specs, and experiment results.
+
+### Render & Preview
+
+```bash
+cd docs && quarto preview   # live preview with hot reload
+cd docs && quarto render     # build static site to docs/_site/
+```
+
+### Site Structure
+
+| Page | Purpose |
+|------|---------|
+| `index.qmd` | Dashboard — key results & navigation |
+| `task_definition.qmd` | Research goal, scope, constraints |
+| `literature_review.qmd` | Background, related work, citations |
+| `claims.qmd` | Testable hypotheses & claim status tracker |
+| `method/overview.qmd` | Architecture overview & component table |
+| `method/component_*.qmd` | Per-component detailed specs |
+| `experiments/overview.qmd` | Experiment navigation hub |
+| `experiments/main.qmd` | Main experiment results |
+| `experiments/ablation.qmd` | Ablation study |
+| `experiments/hyperparam.qmd` | Hyperparameter sensitivity |
+
+### After Running Experiments
+
+1. Fill results into the corresponding `experiments/*.qmd` (mean ± std)
+2. Update the Claim Status Tracker in `claims.qmd`
+3. Update Key Results metrics in `index.qmd`
+
+### Adding a New Experiment
+
+1. Create `docs/experiments/<name>.qmd` following the structure of `main.qmd`
+2. Add the new page to the sidebar in `docs/_quarto.yml`
+3. Add a nav-card to `experiments/overview.qmd`
+4. Link the experiment to a claim in `claims.qmd`
+
+### Adding a New Method Component
+
+1. Copy `docs/method/component_a.qmd` → `docs/method/component_<name>.qmd`
+2. Add the page to `docs/_quarto.yml` under the Method section
+3. Add a row to the Components table in `method/overview.qmd`
 
 ---
 
