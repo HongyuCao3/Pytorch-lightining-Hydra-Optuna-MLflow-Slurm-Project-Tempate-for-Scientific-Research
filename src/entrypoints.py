@@ -11,6 +11,10 @@ import sys
 
 from omegaconf import OmegaConf
 
+from src.utils.logging import get_logger
+
+log = get_logger(__name__)
+
 
 def _load_cfg(config_path: str):
     return OmegaConf.load(config_path)
@@ -21,7 +25,7 @@ def cmd_train(args: argparse.Namespace) -> None:
 
     cfg = _load_cfg(args.config)
     metrics = run_train(cfg)
-    print(f"Training complete. Metrics: {metrics}")
+    log.info("Training complete. Metrics: %s", metrics)
 
 
 def cmd_infer(args: argparse.Namespace) -> None:
