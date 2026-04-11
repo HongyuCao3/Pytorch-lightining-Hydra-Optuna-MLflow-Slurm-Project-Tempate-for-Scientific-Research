@@ -3,10 +3,35 @@
 ## run_train contract
 ```python
 def run_train(cfg: DictConfig) -> Dict[str, Any]:
-    # seed → datamodule → model → logger → Trainer → fit → test → return metrics
+    # seed → datamodule → model → attach_eval_snapshot → logger → log_tags
+    # → Trainer → fit → (auto) test → return metrics
 ```
 - Must return a dict with final val/test metrics.
 - Trainer instantiated from `cfg.trainer` via `instantiate`.
+- MUST call `model.attach_eval_snapshot({...})` before `fit()` when the model
+  subclasses `EvalSnapshotMixin`, so every saved checkpoint carries an
+  `eval_snapshot` key. `run_eval` reads this back to enforce identical
+  re-eval conditions. See `.claude/inference.md` → *Consistency contract*.
+- MUST emit lineage MLflow tags (`split_seed`, `val_split`, `test_split`,
+  `dataset_target`, `method_target`, `run_kind=train`) via `log_tags`
+  immediately after the logger is instantiated. `run_eval` records the
+  same keys plus `parent_run_id` + `checkpoint_sha256` so cross-run
+  comparisons can be filtered by `mlflow.search_runs(filter_string=...)`.
+
+## run_eval contract
+```python
+def run_eval(cfg: DictConfig) -> Dict[str, float]:
+    # validate ckpt → read_eval_snapshot → compare → warn/raise per strict flag
+    # → load model → datamodule → trainer.test → predict_and_aggregate
+    # → run_metric_analyzers → log_eval_metrics(prefix="eval")
+```
+- Scalars-only. Visual artifacts stay in `run_infer`.
+- MUST pass `ckpt_path=None` to `trainer.test` — weights are already loaded
+  via `load_from_checkpoint`; passing the path would trigger a redundant reload.
+- MUST tag the new MLflow run with `run_kind=eval`, `parent_run_id`,
+  `checkpoint_sha256`, `snapshot_status` (`match` / `mismatch` / `unknown`),
+  and the full lineage keys.
+- MUST NOT modify cfg or retrain anything.
 
 ## run_optuna contract
 - `objective(trial)` returns a single scalar metric (e.g., `val_loss`).

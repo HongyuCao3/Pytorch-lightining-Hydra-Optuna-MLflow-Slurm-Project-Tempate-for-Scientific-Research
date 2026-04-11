@@ -1,0 +1,3 @@
+name: eval
+run_test: false
+fast_dev_run: false

@@ -1,8 +1,19 @@
 checkpoint_path: null
 postprocess:
   threshold: 0.5
+# Visual / artifact analyzers — consumed by src/inference/pipeline.py (mode=infer)
 analyzers:
   - confusion_matrix
   - per_class_metrics
   - tsne_embedding
+# Scalar-metric analyzers — consumed by src/inference/metric_analyzers.py
+# via run_eval (mode=eval). Results are logged to MLflow as ``eval/*``.
+metric_analyzers:
+  - macro_f1
+  - ece
+  - brier
+# Per-analyzer options (read by individual metric analyzers via OmegaConf.select)
+metric_analyzer_opts:
+  ece:
+    n_bins: 10
 output_dir: inference_outputs/

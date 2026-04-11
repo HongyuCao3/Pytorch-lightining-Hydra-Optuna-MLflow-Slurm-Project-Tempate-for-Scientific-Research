@@ -63,7 +63,44 @@ def postprocess(aggregated: Dict[str, Any], cfg_post: DictConfig) -> Dict[str, A
 
 
 # ---------------------------------------------------------------------------
-# Main pipeline
+# Predict + aggregate (reusable by run_eval — scalars-only path)
+# ---------------------------------------------------------------------------
+
+def predict_and_aggregate(
+    model: pl.LightningModule,
+    datamodule: pl.LightningDataModule,
+    cfg: DictConfig,
+) -> Dict[str, Any]:
+    """Run ``trainer.predict`` on an already-loaded model and aggregate outputs.
+
+    Extracted from ``run_inference_pipeline`` so ``run_eval`` can reuse the
+    predict + aggregate step without pulling in the visual-analyzer loop.
+    The caller is responsible for loading the checkpoint and calling
+    ``datamodule.setup(...)`` if needed.
+
+    Returns the dict from :func:`aggregate_predictions` plus an (optional)
+    postprocess pass reading ``cfg.inference.postprocess``.
+    """
+    model.eval()
+
+    trainer = pl.Trainer(
+        accelerator="cpu",
+        logger=False,
+        enable_progress_bar=True,
+    )
+    batch_outputs: List[Dict[str, Any]] = trainer.predict(
+        model, dataloaders=datamodule.predict_dataloader()
+    )
+
+    aggregated = aggregate_predictions(batch_outputs)
+    log.info(f"Predictions aggregated: {aggregated['pred'].shape[0]} samples")
+
+    post_cfg = OmegaConf.select(cfg, "inference.postprocess") or OmegaConf.create({})
+    return postprocess(aggregated, post_cfg)
+
+
+# ---------------------------------------------------------------------------
+# Main pipeline (mode=infer: predict + aggregate + visual artifacts)
 # ---------------------------------------------------------------------------
 
 def run_inference_pipeline(cfg: DictConfig) -> Dict[str, Any]:
@@ -93,29 +130,13 @@ def run_inference_pipeline(cfg: DictConfig) -> Dict[str, Any]:
     from hydra._internal.utils import _locate
     model_cls = _locate(model_cls_target)
     model: pl.LightningModule = model_cls.load_from_checkpoint(checkpoint_path)
-    model.eval()
 
     # --- Instantiate datamodule ---------------------------------------------
     datamodule: pl.LightningDataModule = hydra.utils.instantiate(cfg.dataset)
     datamodule.setup("predict")
 
-    # --- Run predict --------------------------------------------------------
-    trainer = pl.Trainer(
-        accelerator="cpu",
-        logger=False,
-        enable_progress_bar=True,
-    )
-    batch_outputs: List[Dict[str, Any]] = trainer.predict(
-        model, dataloaders=datamodule.predict_dataloader()
-    )
-
-    # --- Aggregate -----------------------------------------------------------
-    aggregated = aggregate_predictions(batch_outputs)
-    log.info(f"Predictions aggregated: {aggregated['pred'].shape[0]} samples")
-
-    # --- Postprocess --------------------------------------------------------
-    post_cfg = OmegaConf.select(infer_cfg, "postprocess") or OmegaConf.create({})
-    results = postprocess(aggregated, post_cfg)
+    # --- Predict + aggregate (+ postprocess) via the shared helper ----------
+    results = predict_and_aggregate(model, datamodule, cfg)
 
     # --- Save raw predictions -----------------------------------------------
     preds_path = output_dir / "predictions.pt"

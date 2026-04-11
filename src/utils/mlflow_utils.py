@@ -91,6 +91,63 @@ def log_params(params: dict) -> None:
         log.warning(f"MLflow log_params failed: {e}")
 
 
+def log_tags(tags: dict) -> None:
+    """Set a dict of tags on the active MLflow run.
+
+    Used by ``run_train`` / ``run_eval`` to record lineage fields
+    (``split_seed``, ``dataset_target``, ``method_target``, ``parent_run_id``,
+    ``checkpoint_sha256``) so downstream cross-run comparisons can be filtered
+    by these keys. Values are stringified by MLflow. Silent on failure.
+    """
+    try:
+        import mlflow
+        if not mlflow.active_run():
+            return
+        # MLflow requires string values
+        mlflow.set_tags({str(k): ("" if v is None else str(v)) for k, v in tags.items()})
+    except Exception as e:
+        log.warning(f"MLflow log_tags failed: {e}")
+
+
+def log_eval_metrics(metrics: dict, prefix: str = "eval") -> None:
+    """Log a dict of scalar metrics to MLflow under a namespace prefix.
+
+    Keys are rewritten ``"{prefix}/{key}"`` (or kept as-is if ``prefix`` is
+    empty). Used by ``run_eval`` to keep post-hoc scalar metrics separate from
+    the standard ``test_*`` metrics emitted by ``lit_module.test_step``.
+    Silent on failure.
+    """
+    if not metrics:
+        return
+    if prefix:
+        metrics = {f"{prefix}/{k}": float(v) for k, v in metrics.items()}
+    else:
+        metrics = {k: float(v) for k, v in metrics.items()}
+    log_metrics(metrics)
+
+
+def compute_checkpoint_hash(path: str) -> str:
+    """Return the hex SHA-256 digest of a checkpoint file.
+
+    Used to uniquely identify a checkpoint independently of its filename so
+    ``run_eval`` can tag its MLflow run with the exact artifact it consumed.
+    Returns an empty string if the file is missing or unreadable.
+    """
+    try:
+        import hashlib
+        p = Path(path)
+        if not p.exists():
+            return ""
+        h = hashlib.sha256()
+        with p.open("rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception as e:
+        log.warning(f"compute_checkpoint_hash failed for {path!r}: {e}")
+        return ""
+
+
 def log_run_summary(summary: dict, local_dir: str = ".") -> str:
     """Serialize a run-summary dict to JSON, save it locally, and upload to MLflow.
 

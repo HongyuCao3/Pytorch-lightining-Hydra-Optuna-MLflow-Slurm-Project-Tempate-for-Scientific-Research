@@ -12,12 +12,13 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 import torchmetrics
 
+from src.methods._eval_snapshot_mixin import EvalSnapshotMixin
 from src.methods.mlp.model import MLP
 from src.methods.registry import register
 
 
 @register("mlp")
-class MLPLitModule(pl.LightningModule):
+class MLPLitModule(EvalSnapshotMixin, pl.LightningModule):
     """LightningModule wrapping the MLP model for classification.
 
     Parameters

@@ -40,6 +40,7 @@ from src.utils.mlflow_utils import (
     log_config_to_run,
     log_exception_to_run,
     log_run_summary,
+    log_tags,
 )
 
 log = get_logger(__name__)
@@ -161,6 +162,19 @@ def run_train(cfg: DictConfig) -> Dict[str, Any]:
     model: pl.LightningModule = hydra.utils.instantiate(cfg.method, _convert_="all")
     logger = hydra.utils.instantiate(cfg.logger)
 
+    # Attach an eval-critical snapshot to the model so every checkpoint saved
+    # during fit() embeds the exact data-split conditions this run used.
+    # `run_eval` reads this key back (via src.methods._eval_snapshot_mixin
+    # .read_eval_snapshot) to enforce "same conditions" on post-hoc re-eval.
+    if hasattr(model, "attach_eval_snapshot"):
+        model.attach_eval_snapshot({
+            "dataset_target": OmegaConf.select(cfg, "dataset._target_", default=None),
+            "split_seed": OmegaConf.select(cfg, "dataset.split_seed", default=None),
+            "val_split": OmegaConf.select(cfg, "dataset.val_split", default=None),
+            "test_split": OmegaConf.select(cfg, "dataset.test_split", default=None),
+            "method_target": OmegaConf.select(cfg, "method._target_", default=None),
+        })
+
     # Snapshot hyper-parameters immediately after instantiation so they are
     # available for the run summary even if fit() later raises.
     _tracked_params: Dict[str, Any] = dict(model.hparams)
@@ -191,6 +205,21 @@ def run_train(cfg: DictConfig) -> Dict[str, Any]:
 
     # --- Log merged config as artifact --------------------------------------
     log_config_to_run(cfg, logger)
+
+    # --- Lineage tags --------------------------------------------------------
+    # These tags make training runs filterable in MLflow so cross-run
+    # comparisons only ever happen between runs sharing identical eval
+    # conditions. `run_eval` records the same keys plus `parent_run_id` and
+    # `checkpoint_sha256`, allowing ``mlflow.search_runs`` queries like
+    # ``tags.split_seed = '42' AND tags.dataset_target = '...'``.
+    log_tags({
+        "split_seed": OmegaConf.select(cfg, "dataset.split_seed", default=None),
+        "val_split": OmegaConf.select(cfg, "dataset.val_split", default=None),
+        "test_split": OmegaConf.select(cfg, "dataset.test_split", default=None),
+        "dataset_target": OmegaConf.select(cfg, "dataset._target_", default=None),
+        "method_target": OmegaConf.select(cfg, "method._target_", default=None),
+        "run_kind": "train",
+    })
 
     # --- Fit + Test (with failure capture) ----------------------------------
     # The exception object and formatted traceback are stored so the summary
@@ -408,3 +437,143 @@ def run_infer(cfg: DictConfig) -> None:
                          "E.g.: python -m src.main mode=infer inference.checkpoint_path=<path>")
 
     run_inference_pipeline(cfg)
+
+
+# ---------------------------------------------------------------------------
+# run_eval
+# ---------------------------------------------------------------------------
+
+def run_eval(cfg: DictConfig) -> Dict[str, Any]:
+    """Post-hoc re-evaluation of a saved checkpoint.
+
+    Scalars-only by design: produces ``test_*`` metrics via ``trainer.test``
+    and additional ``eval/*`` metrics via the metric_analyzers registry.
+    Visual artifacts (confusion_matrix, tSNE, calibration) stay in
+    ``mode=infer``.
+
+    Consistency contract
+    --------------------
+    Before running, ``run_eval`` reads ``checkpoint["eval_snapshot"]`` (embedded
+    by :class:`EvalSnapshotMixin` during training) and compares it to the
+    current ``cfg.dataset``. Mismatches either warn or raise depending on
+    ``cfg.eval.strict_snapshot``. Checkpoints without a snapshot (older
+    template versions) degrade to a warning regardless of the strict flag.
+
+    MLflow run
+    ----------
+    A new flat MLflow run is created. It is tagged with ``run_kind=eval``,
+    ``parent_run_id``, ``checkpoint_sha256``, ``split_seed``, ``dataset_target``,
+    ``method_target`` so downstream aggregation can filter by these fields.
+    """
+    from hydra._internal.utils import _locate
+
+    from src.inference.metric_analyzers import run_metric_analyzers
+    from src.inference.pipeline import predict_and_aggregate
+    from src.methods._eval_snapshot_mixin import (
+        compare_eval_snapshot,
+        read_eval_snapshot,
+    )
+    from src.utils.mlflow_utils import (
+        compute_checkpoint_hash,
+        log_eval_metrics,
+    )
+
+    checkpoint_path = OmegaConf.select(cfg, "inference.checkpoint_path")
+    if not checkpoint_path:
+        raise ValueError(
+            "inference.checkpoint_path must be set for eval mode. "
+            "E.g.: python -m src.main mode=eval inference.checkpoint_path=<path>"
+        )
+
+    # --- Enforce consistency against the training snapshot ------------------
+    snapshot = read_eval_snapshot(checkpoint_path)
+    current = {
+        "dataset_target": OmegaConf.select(cfg, "dataset._target_", default=None),
+        "split_seed": OmegaConf.select(cfg, "dataset.split_seed", default=None),
+        "val_split": OmegaConf.select(cfg, "dataset.val_split", default=None),
+        "test_split": OmegaConf.select(cfg, "dataset.test_split", default=None),
+        "method_target": OmegaConf.select(cfg, "method._target_", default=None),
+    }
+    strict = bool(OmegaConf.select(cfg, "eval.strict_snapshot", default=False))
+
+    if snapshot is None:
+        log.warning(
+            "Checkpoint has no eval_snapshot (older template version?). "
+            "Re-evaluation consistency cannot be verified. "
+            "Tag 'snapshot_status=unknown' will be recorded."
+        )
+        snapshot_status = "unknown"
+    else:
+        diffs = compare_eval_snapshot(snapshot, current)
+        if diffs:
+            msg = "Eval snapshot mismatch vs current cfg: " + ", ".join(
+                f"{k}: snapshot={s!r} current={c!r}" for k, (s, c) in diffs.items()
+            )
+            if strict:
+                raise RuntimeError(
+                    msg + " (strict_snapshot=true). Re-run with "
+                    "eval.strict_snapshot=false to downgrade to a warning."
+                )
+            log.warning(msg)
+            snapshot_status = "mismatch"
+        else:
+            log.info("Eval snapshot matches current cfg — conditions verified.")
+            snapshot_status = "match"
+
+    # --- Load model from checkpoint -----------------------------------------
+    model_cls_target: str = cfg.method._target_
+    model_cls = _locate(model_cls_target)
+    model: pl.LightningModule = model_cls.load_from_checkpoint(checkpoint_path)
+    model.eval()
+
+    # --- Instantiate datamodule + logger ------------------------------------
+    datamodule: pl.LightningDataModule = hydra.utils.instantiate(cfg.dataset, _convert_="all")
+    logger = hydra.utils.instantiate(cfg.logger)
+
+    # --- Build a minimal eval trainer (no callbacks) ------------------------
+    trainer: pl.Trainer = hydra.utils.instantiate(
+        cfg.trainer,
+        logger=logger,
+        callbacks=[],
+    )
+
+    # --- Lineage tags on the eval run ---------------------------------------
+    parent_run_id = (snapshot or {}).get("mlflow_run_id")
+    log_tags({
+        "run_kind": "eval",
+        "parent_run_id": parent_run_id,
+        "checkpoint_sha256": compute_checkpoint_hash(checkpoint_path),
+        "snapshot_status": snapshot_status,
+        "split_seed": current["split_seed"],
+        "val_split": current["val_split"],
+        "test_split": current["test_split"],
+        "dataset_target": current["dataset_target"],
+        "method_target": current["method_target"],
+    })
+    log_config_to_run(cfg, logger)
+
+    # --- Run trainer.test (standard test_* metrics) -------------------------
+    # ckpt_path=None because model weights are already loaded via
+    # load_from_checkpoint — passing the path would trigger a redundant reload.
+    log.info(f"Running trainer.test() on checkpoint: {checkpoint_path}")
+    trainer.test(model, datamodule=datamodule, ckpt_path=None)
+    test_metrics: Dict[str, float] = {
+        k: float(v) for k, v in trainer.callback_metrics.items()
+    }
+
+    # --- Run scalar metric analyzers ----------------------------------------
+    enabled_metric_analyzers = list(
+        OmegaConf.select(cfg, "inference.metric_analyzers", default=[]) or []
+    )
+    analyzer_metrics: Dict[str, float] = {}
+    if enabled_metric_analyzers:
+        log.info(f"Running metric analyzers: {enabled_metric_analyzers}")
+        results = predict_and_aggregate(model, datamodule, cfg)
+        analyzer_metrics = run_metric_analyzers(
+            results, enabled=enabled_metric_analyzers, cfg=cfg
+        )
+        log_eval_metrics(analyzer_metrics, prefix="eval")
+
+    combined = {**test_metrics, **{f"eval/{k}": v for k, v in analyzer_metrics.items()}}
+    log.info(f"Evaluation complete | metrics={combined}")
+    return combined

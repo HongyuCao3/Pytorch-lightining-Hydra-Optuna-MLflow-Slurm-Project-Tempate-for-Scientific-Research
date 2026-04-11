@@ -1,0 +1,12 @@
+# Post-hoc evaluation settings consumed by src/train.py::run_eval.
+#
+# strict_snapshot:
+#   false (default during migration) -> log a WARNING if the checkpoint's
+#   embedded eval_snapshot disagrees with the current cfg.dataset. Old
+#   checkpoints saved before the snapshot mechanism existed are also treated
+#   as "unknown" and only warn.
+#
+#   true -> raise RuntimeError on any disagreement. Flip to true once every
+#   active checkpoint in the repo carries a snapshot (i.e. was trained with
+#   the new run_train).
+strict_snapshot: false

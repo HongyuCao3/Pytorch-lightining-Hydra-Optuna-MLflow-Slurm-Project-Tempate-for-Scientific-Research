@@ -114,11 +114,40 @@ python -m src.main dataset=wine method=linear
 python -m src.main mode=optuna dataset=wine method=mlp optuna.n_trials=20
 ```
 
-### Inference + Analysis
+### Inference + Visual Analysis (`mode=infer`)
+
+Produces confusion matrix / tSNE / calibration PNGs and `predictions.pt`. Does
+not compute or log any scalar metrics beyond what training already logged.
 
 ```bash
 python -m src.main mode=infer inference.checkpoint_path=checkpoints/mlp/<timestamp>/best.ckpt
 ```
+
+### Post-hoc Re-evaluation with New Metrics (`mode=eval`)
+
+Re-runs `trainer.test()` on a saved checkpoint **and** runs the scalar
+metric_analyzers registry (`macro_f1`, `ece`, `brier`, …), logging everything
+to a new MLflow run tagged with `parent_run_id`, `checkpoint_sha256`,
+`split_seed`, etc. Use this when you want to evaluate a checkpoint with a
+metric that did not exist at training time — no retraining required.
+
+```bash
+# Add new metrics without touching any training code
+python -m src.main mode=eval inference.checkpoint_path=checkpoints/mlp/<ts>/best.ckpt \
+    'inference.metric_analyzers=[macro_f1,ece,brier,classification_report_flat]'
+
+# Strict mode: raise if the checkpoint's embedded eval_snapshot disagrees with
+# the current cfg.dataset (split_seed, val_split, test_split, dataset target).
+python -m src.main mode=eval inference.checkpoint_path=<ckpt> eval.strict_snapshot=true
+```
+
+Consistency contract: every checkpoint saved by `run_train` embeds an
+`eval_snapshot` dict recording the exact data-split conditions it was trained
+under. `run_eval` compares this against the current cfg and either warns
+(default) or raises (`eval.strict_snapshot=true`). This guarantees that
+post-hoc metrics computed on a checkpoint share identical evaluation
+conditions with both the original training run and any other baseline run
+sharing the same `split_seed` + dataset config.
 
 ### SLURM Multirun
 
@@ -149,8 +178,9 @@ pytest tests/ -v
 | 3 | Fast dev run | `python -m src.main mode=debug dataset=wine method=mlp` |
 | 4 | Full run (val_loss decreases) | `python -m src.main dataset=wine method=mlp` |
 | 5 | Optuna 3 trials | `python -m src.main mode=optuna optuna.n_trials=3` |
-| 6 | Inference + analyzers | `python -m src.main mode=infer inference.checkpoint_path=<ckpt>` |
-| 7 | SLURM submit | `python -m src.main -m hydra/launcher=slurm ...` |
+| 6 | Inference + visual analyzers | `python -m src.main mode=infer inference.checkpoint_path=<ckpt>` |
+| 7 | Post-hoc re-eval with new metrics | `python -m src.main mode=eval inference.checkpoint_path=<ckpt>` |
+| 8 | SLURM submit | `python -m src.main -m hydra/launcher=slurm ...` |
 
 ---
 

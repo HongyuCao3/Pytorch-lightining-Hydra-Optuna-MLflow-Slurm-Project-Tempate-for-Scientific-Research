@@ -8,6 +8,7 @@ defaults:
   - mode: train
   - optuna: default
   - inference: default
+  - eval: default
   - override hydra/launcher: basic
   - _self_
 

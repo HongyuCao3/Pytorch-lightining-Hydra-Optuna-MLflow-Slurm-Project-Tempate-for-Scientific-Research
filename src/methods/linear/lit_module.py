@@ -7,12 +7,13 @@ import torch
 import torch.nn.functional as F
 import pytorch_lightning as pl
 
+from src.methods._eval_snapshot_mixin import EvalSnapshotMixin
 from src.methods.linear.model import LinearModel
 from src.methods.registry import register
 
 
 @register("linear")
-class LinearLitModule(pl.LightningModule):
+class LinearLitModule(EvalSnapshotMixin, pl.LightningModule):
     """LightningModule wrapping LinearModel for classification.
 
     Parameters
