@@ -1,5 +1,14 @@
 # Global Rules (highest priority)
 
+## Environment
+- This project's conda environment is **`research-template`**, defined by
+  `environment.yml` at the repo root. The same identifier is used as
+  `project_name` in `configs/config.yaml` and as the MLflow `experiment_name`
+  in `configs/logger/mlflow.yaml`.
+- Always run acceptance commands inside this env: `conda activate research-template`.
+- Never create the env with `conda create -n <other-name>` — always
+  `conda env create -f environment.yml` so the name stays canonical.
+
 ## Anti-patterns (hard constraints)
 - `model.py` MUST NOT read cfg, use logger, or contain training logic.
 - Network structure lives ONLY in `methods/<name>/model.py`.

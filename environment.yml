@@ -1,0 +1,33 @@
+# Canonical conda environment definition for this project.
+#
+# The `name:` field below is the SINGLE SOURCE OF TRUTH for the conda
+# environment name across every machine, every developer, and every CI run.
+# Do NOT create the environment with `conda create -n <other-name>` — always
+# use `conda env create -f environment.yml` so the name stays consistent.
+#
+# The name `research-template` matches `project_name` in
+# configs/config.yaml and the MLflow `experiment_name` in
+# configs/logger/mlflow.yaml, so a single identifier ties together the
+# conda env, the Hydra project, and the MLflow experiment.
+#
+# Quick start:
+#     conda env create -f environment.yml
+#     conda activate research-template
+#     pytest tests/ -v
+#
+# Updating dependencies: edit requirements.txt (pip-managed), then run
+#     conda env update -f environment.yml --prune
+name: research-template
+
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.10
+  - pip
+  # Everything else is delegated to requirements.txt so this file stays the
+  # canonical NAME source while requirements.txt stays the canonical DEPS source.
+  - pip:
+      - -r requirements.txt

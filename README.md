@@ -86,8 +86,27 @@ project_root/
 
 ### Install
 
+The canonical way to set up the environment is via [environment.yml](environment.yml),
+which pins the conda env name to `research-template` so it stays identical
+across every machine, developer, and CI run.
+
 ```bash
-pip install -r requirements.txt
+conda env create -f environment.yml
+conda activate research-template
+```
+
+The conda env name `research-template` is the same identifier as `project_name`
+in [configs/config.yaml](configs/config.yaml) and the MLflow `experiment_name`
+in [configs/logger/mlflow.yaml](configs/logger/mlflow.yaml), so one name covers
+the conda env, the Hydra project, and the MLflow experiment.
+
+Updating dependencies: edit [requirements.txt](requirements.txt) (pip-managed),
+then run `conda env update -f environment.yml --prune`.
+
+If you already have an existing environment under a different name (e.g. `template`),
+rename it in-place rather than recreating from scratch:
+```bash
+conda rename -n template research-template
 ```
 
 ### Train (debug — fast_dev_run)
