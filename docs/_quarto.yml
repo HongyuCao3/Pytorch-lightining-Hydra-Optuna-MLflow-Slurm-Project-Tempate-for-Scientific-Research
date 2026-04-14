@@ -48,6 +48,12 @@ website:
             href: experiments/ablation.qmd
           - text: "Hyperparameter Sensitivity"
             href: experiments/hyperparam.qmd
+      - section: "Reporting"
+        contents:
+          - text: "Weekly Progress"
+            href: weekly_progress.qmd
+          - text: "Weekly Presentation"
+            href: weekly_presentation.qmd
 
 format:
   html:

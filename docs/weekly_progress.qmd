@@ -1,0 +1,97 @@
+---
+title: "Weekly Progress Summary"
+subtitle: "{{WEEK_START}} – {{WEEK_END}}"
+date: "{{REPORT_DATE}}"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+    html-math-method: katex
+---
+
+::: {.callout-tip collapse="true"}
+## How to use this template
+Replace every `{{TOKEN}}` placeholder and every italicised guidance line.
+Keep bullets ≤ 15 words, one idea per bullet (see [.claude/docs.md](../.claude/docs.md) §Writing Style).
+Slide-deck companion: [weekly_presentation.qmd](weekly_presentation.qmd).
+:::
+
+## TL;DR
+
+*One line per finding. Each bullet links to its section below. 3–5 bullets total.*
+
+- **Finding 1** — headline result in one clause → [§1](#sec-finding-1)
+- **Finding 2** — headline result in one clause → [§2](#sec-finding-2)
+- **Finding 3** — headline result in one clause → [§3](#sec-finding-3)
+
+## 1. {{FINDING_1_TITLE}} {#sec-finding-1}
+
+*Objective: one sentence stating what this finding answers.*
+
+*Setup: dataset, model, budget, evaluation metric — one line.*
+
+| {{COL_METHOD}} | {{COL_METRIC}} (↑) | Δ vs {{BASELINE}} |
+|---|:---:|:---:|
+| **{{OUR_METHOD}}** | **{{VALUE}}** | **{{DELTA}}** |
+| {{BASELINE_A}} | {{VALUE}} | {{DELTA}} |
+| {{BASELINE_B}} | {{VALUE}} | {{DELTA}} |
+
+*Takeaway: one sentence — what the table proves, disproves, or narrows.*
+
+Backing experiment: [{{EXPERIMENT_PAGE_TITLE}}](experiments/{{EXPERIMENT_PAGE}}.qmd).
+
+## 2. {{FINDING_2_TITLE}} {#sec-finding-2}
+
+*Objective: one sentence.*
+
+*Design: variables held fixed, variable being swept, control condition.*
+
+| Condition | {{METRIC_A}} | {{METRIC_B}} |
+|:---:|:---:|:---:|
+| {{COND_BASELINE}} | {{VALUE}} | {{VALUE}} |
+| {{COND_TREATMENT}} | {{VALUE}} | {{VALUE}} |
+| {{COND_CONTROL}} | {{VALUE}} | {{VALUE}} |
+
+*Takeaway: one sentence.*
+
+Details: [{{EXPERIMENT_PAGE_TITLE}}](experiments/{{EXPERIMENT_PAGE}}.qmd).
+
+## 3. {{FINDING_3_TITLE}} {#sec-finding-3}
+
+*Objective: one sentence.*
+
+*Result narrative: 1–3 short bullets — what changed across conditions, in numbers.*
+
+- {{CONDITION_A}}: {{METRIC}} moved from {{X}} → {{Y}}
+- {{CONDITION_B}}: {{METRIC}} stayed flat at {{Z}}
+- Control: {{METRIC}} collapsed to {{W}}
+
+*Takeaway: one sentence — the mechanism this exposes.*
+
+Details: [{{EXPERIMENT_PAGE_TITLE}}](experiments/{{EXPERIMENT_PAGE}}.qmd).
+
+## 4. Synthesis
+
+*Recommended pattern: Finding A + Finding B ⇒ narrowed claim C. Two short paragraphs max.*
+
+- **Claim**: one sentence stating the joined conclusion.
+  - Evidence A: short pointer to §{{N}} with the key number.
+  - Evidence B: short pointer to §{{N}} with the key number.
+- **Caveat / scope**: the regime in which the claim holds (e.g. dataset scale, model family).
+
+## 5. Next Steps
+
+| Priority | Task | Purpose |
+|:---:|---|---|
+| 1 | **{{TASK_1}}** | {{ONE_LINE_PURPOSE}} |
+| 2 | **{{TASK_2}}** | {{ONE_LINE_PURPOSE}} |
+| 3 | **{{TASK_3}}** | *Headroom* — {{WHY_NOT_BLOCKER}} |
+
+```{=html}
+<hr style="margin-top:3rem;">
+<div style="display:flex; justify-content:space-between; margin-top:1rem;">
+  <a href="weekly_presentation.qmd" class="btn btn-outline-secondary btn-sm">View slide deck →</a>
+  <a href="experiments/overview.qmd" class="btn btn-outline-secondary btn-sm">← Experiments Dashboard</a>
+</div>
+```

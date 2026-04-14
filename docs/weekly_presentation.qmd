@@ -1,0 +1,269 @@
+---
+title: "Weekly Progress"
+subtitle: "{{WEEK_START}} – {{WEEK_END}}"
+date: "{{REPORT_DATE}}"
+format:
+  revealjs:
+    theme: dark
+    slide-number: true
+    incremental: false
+    toc: false
+    progress: true
+    chalkboard: false
+    html-math-method: katex
+    width: 1280
+    height: 800
+---
+
+<!--
+USAGE
+- Replace every {{TOKEN}} placeholder; delete this comment when done.
+- Slide bodies: 3–6 short bullets, ≤ 15 words each.
+- Speaker notes (::: {.notes}) follow this cadence:
+    **Bold subheader** mirrors a slide bullet group.
+    1–3 plain bullets expand each slide bullet.
+    Final block is always **Implication** — the one sentence to leave with.
+- Mirror this 3-slide pattern per finding: Objective → Results figure → Mechanism.
+- Companion written report: weekly_progress.qmd.
+-->
+
+## Agenda — {{WEEK_RANGE}} {.smaller}
+
+1. **{{FINDING_1_HEADLINE}}**
+2. **{{FINDING_2_HEADLINE}}**
+3. **{{FINDING_3_HEADLINE}}**
+4. Anticipated Q&A + next steps
+
+::: {.notes}
+- One sentence per finding, in the order they appear.
+- Frame the week as a single arc: what we set out to test → what shifted.
+- Flag any finding that *narrows* a prior claim; reviewers will ask first.
+:::
+
+---
+
+## 1. {{FINDING_1_TITLE}} — Objective & Design
+
+- **Goal**: {{ONE_LINE_QUESTION_THIS_ANSWERS}}
+- **Setup**: {{DATASET}} · {{MODEL}} · {{BUDGET}} · {{METRIC}}
+- **Compared methods**: {{METHOD_LIST}}
+- **Why this metric**: {{ONE_LINE_JUSTIFICATION}}
+
+::: {.notes}
+**Goal**
+- Restate the question in plain language.
+- Name the prior result this builds on or challenges.
+
+**Setup**
+- Dataset scale and noise level matter — say them out loud.
+- Note any control held fixed across all conditions.
+
+**Method choices**
+- One short line per method family being compared.
+- Flag baselines vs. our method explicitly.
+:::
+
+---
+
+## 1. {{FINDING_1_TITLE}} — Results
+
+![]({{FIGURE_PATH_1}}){width=85%}
+
+- **Axes**: x = {{X_AXIS}}, y = {{Y_AXIS}}
+- **Colours**: {{COLOR_LEGEND_BLUE}} | {{COLOR_LEGEND_ORANGE}} | {{COLOR_LEGEND_GREY}}
+- **Headline number**: {{OUR_METHOD}} = {{VALUE}} ({{DELTA_VS_BASELINE}})
+
+::: {.notes}
+**Reading the figure**
+- Walk through axes first, then colour groups.
+- Point out the reference line / dashed marker.
+
+**Group-by-group**
+- Compare each cluster of bars in the order shown.
+- Call out the largest gap and the smallest gap.
+
+**Implication**
+- One sentence: what this rules in or out for the headline claim.
+:::
+
+---
+
+## 1. {{FINDING_1_TITLE}} — Mechanism
+
+- **Observation**: {{WHAT_WE_SAW}}
+- **Why it happens**: {{MECHANISM_IN_ONE_LINE}}
+- **What it rules out**: {{COMPETING_HYPOTHESIS_KILLED}}
+
+::: {.notes}
+**Observation → Explanation**
+- Cite the row / number from the previous slide.
+- Bridge to the mechanism without inventing new variables.
+
+**Falsifier check**
+- State the alternative hypothesis this evidence kills.
+- Note any residual ambiguity for the Q&A slide.
+
+**Implication**
+- One sentence linking the mechanism back to the headline claim.
+:::
+
+---
+
+## 2. {{FINDING_2_TITLE}} — Objective & Design
+
+- **Goal**: {{ONE_LINE_QUESTION}}
+- **Design**: {{N}} conditions × {{M}} datasets · {{MODEL}}
+  - **{{COND_A}}** — {{ONE_LINE_DESCRIPTION}}
+  - **{{COND_B}}** — {{ONE_LINE_DESCRIPTION}}
+  - **{{COND_CONTROL}}** — {{ONE_LINE_DESCRIPTION}}
+
+::: {.notes}
+**Goal**
+- This finding usually isolates a confound; name the confound directly.
+
+**Design**
+- Explain what is held fixed and what varies — in that order.
+- Map the on-slide condition labels to their figure labels.
+:::
+
+---
+
+## 2. {{FINDING_2_TITLE}} — Results
+
+![]({{FIGURE_PATH_2}}){width=85%}
+
+- **Left panel**: {{LEFT_PANEL_DESCRIPTION}}
+- **Right panel**: {{RIGHT_PANEL_DESCRIPTION}}
+- **Key shift**: {{HEADLINE_SHIFT_IN_NUMBERS}}
+
+::: {.notes}
+**Left panel**
+- Walk axes; call out the bar that moved most.
+- State the absolute value, not just the direction.
+
+**Right panel**
+- Connect to the left: same axis or different?
+- Read the threshold or reference line out loud.
+
+**Implication**
+- Frame as: confound contributes X%, residual is Y, therefore signal is Z.
+:::
+
+---
+
+## 3. {{FINDING_3_TITLE}} — Dynamics
+
+- **Goal**: extend a static snapshot to a time-resolved view
+- **Conditions**:
+  - **{{COND_FULL}}** — full system
+  - **{{COND_FROZEN}}** — adaptive component disabled
+  - **{{COND_NONE}}** — control, no intervention
+- **Probe**: {{METRIC}} measured every {{INTERVAL}}
+
+::: {.notes}
+**Why time-resolved**
+- Static snapshots hide collapse and recovery dynamics.
+- Time view lets us separate "preserves" from "improves".
+
+**Conditions**
+- The frozen-vs-full pair isolates the value of adaptation.
+- The no-intervention control shows what training does on its own.
+:::
+
+---
+
+## 3. {{FINDING_3_TITLE}} — Trajectories
+
+![]({{FIGURE_PATH_3}}){width=85%}
+
+- **Curves**: {{COND_FULL}} ↑ from {{X}} to {{Y}} | {{COND_FROZEN}} ↑ from {{X}} to {{Y}} | {{COND_NONE}} ↓ from {{X}} to {{Y}}
+- **Pairwise reads**:
+  - Full vs. None → isolates the **presence** of intervention
+  - Full vs. Frozen → isolates **adaptation** on top of intervention
+
+::: {.notes}
+**Reading the trajectories**
+- Read each curve's start, mid, end value.
+- Name the monotonic vs. collapsing curve explicitly.
+
+**Pairwise contrasts**
+- Full vs. None → the intervention is necessary.
+- Full vs. Frozen → adaptation is or is not load-bearing.
+
+**Implication**
+- Narrow the claim to what the contrasts actually support.
+:::
+
+---
+
+## Anticipated Q&A — *"Why does {{KNOWN_WEAKNESS}} not break this?"* {.smaller}
+
+**Short answer**: most of the gain comes from {{REAL_DRIVER}}, not from {{SUSPECTED_DRIVER}}.
+
+- **Known issue**: {{ISSUE_DESCRIPTION}} — still holds
+- **Isolated contrast**: {{COMPONENT_ALONE}} = {{SMALL_DELTA}}, joined = {{BIG_DELTA}}
+- **Mechanism**: {{REAL_DRIVER}} carries the load (see [§3](#))
+- **Side benefit**: {{REAL_DRIVER}} also partially cancels {{KNOWN_WEAKNESS}}
+- **Headroom**: fixing {{KNOWN_WEAKNESS}} is upside, not a blocker
+
+::: {.notes}
+**Why pre-empt this**
+- This is the sharpest reviewer-style question this week — answer before being asked.
+
+**Numbers to drop**
+- Component-alone delta vs. joined delta — show the gap is large.
+- Quote the headline mechanism number from the trajectories slide.
+
+**Implication**
+- Current headline result was reached *despite* the weakness, not because of it.
+:::
+
+---
+
+## Next Steps {.smaller}
+
+**Glossary** (terms used above):
+
+- **{{TERM_1}}**: {{ONE_LINE_DEFINITION}}
+- **{{TERM_2}}**: {{ONE_LINE_DEFINITION}}
+
+**Priorities**:
+
+| | Task | Content |
+|---|---|---|
+| ① | {{TASK_1}} | {{ONE_LINE_PURPOSE}} |
+| ② | {{TASK_2}} | {{ONE_LINE_PURPOSE}} |
+| ③ | {{TASK_3}} | *Headroom* — {{WHY_NOT_BLOCKER}} |
+| ④ | {{TASK_4}} | *Headroom* — {{WHY_NOT_BLOCKER}} |
+
+::: {.notes}
+**Glossary**
+- Define any term introduced this week before listing priorities.
+- Skip terms the audience has heard for ≥ 2 weeks.
+
+**Priorities**
+- ① and ② are blockers; ③ and ④ are headroom.
+- Note dependencies between items (e.g. ③ unblocks ①).
+:::
+
+---
+
+## Closing
+
+**Outer loop**: {{ONE_LINE_OUTER_LOOP_PROGRESS}}
+
+**Inner loop**: {{ONE_LINE_MECHANISTIC_PROGRESS}} — and both findings forced us to **narrow** the claim, not just confirm it.
+
+> **{{ONE_SENTENCE_TAKEAWAY}}**
+
+::: {.notes}
+**Outer loop**
+- The "did we still win the benchmark" half of the week.
+
+**Inner loop**
+- The mechanistic / why-it-works half of the week.
+- Emphasise that narrowing a claim *is* progress.
+
+**Implication**
+- One sentence the audience should remember a week from now.
+:::

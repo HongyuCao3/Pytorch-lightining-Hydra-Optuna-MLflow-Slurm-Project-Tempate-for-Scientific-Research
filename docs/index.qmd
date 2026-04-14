@@ -75,6 +75,10 @@ digraph G {
 <a href="experiments/overview.qmd">Experiments</a>
 <p>Setup, results, analysis</p>
 </div>
+<div class="nav-card">
+<a href="weekly_progress.qmd">Weekly Reports</a>
+<p>Progress summary &amp; slide deck templates</p>
+</div>
 :::
 
 ---
