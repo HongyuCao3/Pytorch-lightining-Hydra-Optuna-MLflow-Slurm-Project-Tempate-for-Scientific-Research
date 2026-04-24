@@ -1,0 +1,14 @@
+# Robust experiment: cross-seed / cross-split comparison using a task metric.
+#
+# Identical schema to `evaluation` at the single-run level — each individual
+# run still optimises a task metric, not loss. The "robust" part happens
+# post-hoc: src/scripts/aggregate_runs.py aggregates `run_summary.json`
+# files across seeds and reports median / IQR / significance tests instead
+# of a single point estimate.
+#
+# Use this preset when publishing a number with an error bar attached.
+kind: robust
+monitor: val_acc
+mode: max
+patience: 15
+convergence_threshold: null

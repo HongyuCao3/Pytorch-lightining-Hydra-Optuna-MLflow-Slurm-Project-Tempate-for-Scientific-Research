@@ -1,0 +1,13 @@
+# Convergence experiment: "did training converge?" — the ONLY kind in which
+# loss is permitted as the primary monitor. Never use this preset for
+# cross-method or cross-seed comparisons; use `experiment=evaluation` or
+# `experiment=robust` instead.
+#
+# Set `convergence_threshold` to the loss value below which you consider the
+# run converged. The first epoch that crosses it is recorded as
+# `convergence_step` in run_summary.json.
+kind: convergence
+monitor: val_loss
+mode: min
+patience: 10
+convergence_threshold: null

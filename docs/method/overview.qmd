@@ -66,8 +66,8 @@ digraph G {
 1. `DataModule` yields batch `(x, y)` of shape `[B × D]`, `[B]`
 2. `Component A` transforms `x` → embedding `h` of shape `[B × H]`
 3. `Component B` takes `h` → computes logits + loss; gradients flow back through both
-4. Optimiser updates both A and B jointly; `ReduceLROnPlateau` monitors `val_loss`
-5. Best checkpoint saved by `val_loss` to `latest_checkpoint.json`
+4. Optimiser updates both A and B jointly; `ReduceLROnPlateau` monitors `val_loss` (LR scheduling is local to the method, not the experiment evaluation)
+5. Best checkpoint saved by `cfg.experiment.monitor` (default: `val_acc`) to `latest_checkpoint.json`. Loss-as-monitor is permitted only when `cfg.experiment.kind=convergence`.
 
 **Inference path** (`mode=infer`):
 

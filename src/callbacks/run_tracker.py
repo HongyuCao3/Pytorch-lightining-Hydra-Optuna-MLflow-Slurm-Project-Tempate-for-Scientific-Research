@@ -33,7 +33,10 @@ class RunTrackerCallback(pl.Callback):
     Parameters
     ----------
     monitor:
-        Name of the metric to watch, e.g. ``"val_loss"`` or ``"val_acc"``.
+        Name of the metric to watch (e.g. ``"val_acc"`` for evaluation runs,
+        ``"val_loss"`` only for convergence studies). Required — there is no
+        default, since the choice of metric is load-bearing for what
+        ``best_metric`` and ``final_metric`` mean in run_summary.json.
     mode:
         ``"min"`` if lower is better (loss), ``"max"`` if higher is better
         (accuracy).  Controls how ``best_value`` and ``convergence_step``
@@ -48,8 +51,8 @@ class RunTrackerCallback(pl.Callback):
 
     def __init__(
         self,
-        monitor: str = "val_loss",
-        mode: str = "min",
+        monitor: str,
+        mode: str,
         convergence_threshold: Optional[float] = None,
     ) -> None:
         super().__init__()

@@ -1,5 +1,22 @@
 # Train Rules (applies to src/train.py and Trainer usage)
 
+## Experiment objective schema (cfg.experiment)
+Selected via the Hydra group `experiment` (preset files in `configs/experiment/`).
+Every `run_train` / `run_optuna` reads the same five fields:
+
+| field | meaning |
+|---|---|
+| `kind` | `convergence` \| `evaluation` \| `robust` |
+| `monitor` | logged metric key (drives `ModelCheckpoint`, `EarlyStopping`, `RunTrackerCallback`, Optuna, `run_summary.json::final_metric`, Hydra sweeper return value) |
+| `mode` | `min` or `max` |
+| `patience` | EarlyStopping patience in epochs |
+| `convergence_threshold` | first epoch crossing this is recorded as `convergence_step` (null = disabled) |
+
+`_validate_experiment(cfg)` is called at the top of `run_train` and
+`run_optuna`. It refuses any non-`convergence` kind whose `monitor` looks
+loss-like (`loss` / `nll` substrings). See `.claude/global.md` →
+*Evaluation metrics*.
+
 ## run_train contract
 ```python
 def run_train(cfg: DictConfig) -> Dict[str, Any]:
@@ -34,7 +51,11 @@ def run_eval(cfg: DictConfig) -> Dict[str, float]:
 - MUST NOT modify cfg or retrain anything.
 
 ## run_optuna contract
-- `objective(trial)` returns a single scalar metric (e.g., `val_loss`).
+- `objective(trial)` returns a single scalar metric. The metric **defaults to
+  `cfg.experiment.monitor`** with direction derived from `cfg.experiment.mode`
+  (`min` → `minimize`, `max` → `maximize`). Override only via `cfg.optuna.metric`
+  / `cfg.optuna.direction` and only when the search must intentionally
+  optimise something different from the experiment's primary metric (rare).
 - Only modify a **copy** of cfg (never in-place).
 - Integrate with MLflow via `MLflowCallback`; each trial = MLflow child run.
 - Storage: RDB, configurable via `cfg.optuna.storage`.

@@ -3,7 +3,7 @@
 ## Structure
 ```
 configs/
-  config.yaml          # root: defaults list → dataset/method/trainer/logger/mode/optuna
+  config.yaml          # root: defaults list → dataset/method/trainer/logger/mode/optuna/experiment
   dataset/<name>.yaml
   method/<name>.yaml   # must include _target_ → LitModule class path
   trainer/default.yaml
@@ -14,8 +14,18 @@ configs/
   mode/infer.yaml
   optuna/default.yaml
   inference/default.yaml  # checkpoint_path, analyzers list
+  experiment/evaluation.yaml   # task-metric monitor (default)
+  experiment/convergence.yaml  # loss monitor — only legal kind for loss
+  experiment/robust.yaml       # task metric, aggregated across seeds
   hydra/launcher/slurm.yaml
 ```
+
+## experiment group (cfg.experiment)
+- Carries `kind`, `monitor`, `mode`, `patience`, `convergence_threshold`.
+- The `monitor` here is the single source of truth for ModelCheckpoint,
+  EarlyStopping, RunTrackerCallback, Optuna, and `run_summary.json`.
+- See `.claude/train.md` → *Experiment objective schema* and
+  `.claude/global.md` → *Evaluation metrics* for the rules.
 
 ## method config requirements
 - `_target_`: full Python path to LitModule class.

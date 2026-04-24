@@ -27,8 +27,11 @@ def main(cfg: DictConfig) -> Optional[float]:
 
     if mode in ("train", "debug"):
         metrics = run_train(cfg)
-        # Return primary metric for Hydra sweeper / multirun
-        return float(metrics.get("val_loss", 0.0))
+        # Return primary metric for Hydra sweeper / multirun. Sourced from
+        # cfg.experiment.monitor so it matches ModelCheckpoint, EarlyStopping
+        # and Optuna — never val_loss by default.
+        monitor = cfg.experiment.monitor
+        return float(metrics.get(monitor, 0.0))
 
     elif mode == "optuna":
         run_optuna(cfg)

@@ -1,0 +1,21 @@
+# Evaluation experiment: single-run comparison using a real task metric.
+#
+# kind:    "evaluation" → monitor MUST be a task metric (acc/F1/AUROC/ECE...)
+#          NOT a loss. run_train enforces this at start-up.
+# monitor: the logged metric key driving every selection surface:
+#            - ModelCheckpoint.monitor
+#            - EarlyStopping.monitor
+#            - RunTrackerCallback.monitor
+#            - Optuna objective (when optuna.metric is null)
+#            - run_summary.json::final_metric / best_metric
+#            - Hydra sweeper return value in src/main.py
+# mode:    "min" (lower is better) or "max" (higher is better).
+# patience: EarlyStopping patience in epochs.
+# convergence_threshold:
+#          First epoch at which the metric crosses this threshold is recorded
+#          as `convergence_step` in run_summary.json. null = disabled.
+kind: evaluation
+monitor: val_acc
+mode: max
+patience: 10
+convergence_threshold: null

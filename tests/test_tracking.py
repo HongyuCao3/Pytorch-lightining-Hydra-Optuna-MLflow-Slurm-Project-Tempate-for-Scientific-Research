@@ -243,6 +243,63 @@ def test_optuna_summary_fields(
 
 
 # ---------------------------------------------------------------------------
+# Test: loss-as-evaluation guard refuses non-convergence experiments
+# ---------------------------------------------------------------------------
+
+def test_loss_guard_refuses_evaluation_kind(
+    project_root: str, tmp_path, monkeypatch
+) -> None:
+    """run_train must refuse to start when experiment.kind != 'convergence'
+    and experiment.monitor looks like a loss. This is the enforcement
+    mechanism for the rule in .claude/global.md → 'Evaluation metrics'.
+    """
+    from src.train import run_train
+
+    cfg = _make_cfg(
+        project_root,
+        tmp_path,
+        overrides=[
+            "mode=debug",
+            "dataset=wine",
+            "method=mlp",
+            "logger=mlflow",
+            "experiment=evaluation",
+            "experiment.monitor=val_loss",
+        ],
+    )
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(ValueError, match="looks like a loss"):
+        run_train(cfg)
+
+
+def test_loss_guard_allows_convergence_kind(
+    project_root: str, tmp_path, monkeypatch
+) -> None:
+    """experiment=convergence is the one kind in which val_loss is a legal
+    monitor — run_train must accept it and produce a normal summary.
+    """
+    from src.train import run_train
+
+    cfg = _make_cfg(
+        project_root,
+        tmp_path,
+        overrides=[
+            "mode=debug",
+            "dataset=wine",
+            "method=mlp",
+            "logger=mlflow",
+            "experiment=convergence",
+        ],
+    )
+    monkeypatch.chdir(tmp_path)
+    run_train(cfg)
+
+    summary = json.loads((tmp_path / "run_summary.json").read_text(encoding="utf-8"))
+    assert summary["status"] == "completed"
+
+
+# ---------------------------------------------------------------------------
 # Test 5: RunTrackerCallback unit test (no Trainer, no MLflow)
 # ---------------------------------------------------------------------------
 

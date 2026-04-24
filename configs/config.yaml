@@ -9,6 +9,7 @@ defaults:
   - optuna: default
   - inference: default
   - eval: default
+  - experiment: evaluation
   - override hydra/launcher: basic
   - _self_
 

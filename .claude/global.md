@@ -22,9 +22,29 @@
 - Validate only at system boundaries (user input, external APIs).
 
 ## Naming & paths
-- Checkpoint: `{method}-{dataset}-{timestamp}-epoch={E:02d}-val={val:.4f}.ckpt`
+- Checkpoint: `{method}-{dataset}-{timestamp}-epoch={E:02d}-{monitor}={val:.4f}.ckpt`
+  where `{monitor}` is `cfg.experiment.monitor` (e.g. `val_acc`, `val_f1`).
+  Earlier template versions hard-coded `val=` regardless of which metric was
+  monitored — that is no longer permitted; the filename must name the
+  metric so a glance at the path tells you what the value means.
 - Use `latest_checkpoint.json` (not symlink) for Windows compat.
 - MLflow: log merged `config.yaml` + key artifacts per run.
+
+## Evaluation metrics (hard constraint)
+- `loss` is a training signal, not an evaluation metric. It may appear as
+  `cfg.experiment.monitor` (and thus drive `ModelCheckpoint`, `EarlyStopping`,
+  `RunTrackerCallback`, Optuna, and `run_summary.json::final_metric`) **only**
+  when `cfg.experiment.kind == "convergence"`.
+- For every other experiment kind (`evaluation`, `robust`, ablations,
+  cross-method comparisons, hyperparameter search, paper numbers), the
+  monitor MUST be a real task metric — accuracy, F1, AUROC, ECE, BLEU,
+  perplexity, etc. — not a loss / NLL.
+- `run_train` and `run_optuna` validate this via `_validate_experiment(cfg)`
+  at start-up and refuse to run if the monitor looks loss-like for a
+  non-convergence kind. Do not work around the guard; pick a task metric or
+  switch the experiment kind.
+- LR-scheduler `monitor` (e.g. `ReduceLROnPlateau`) is exempt — it is a
+  local optimisation detail and may use loss freely.
 
 ## Tracking (hard constraints)
 - Every `run_train` call MUST write `run_summary.json` to the working directory

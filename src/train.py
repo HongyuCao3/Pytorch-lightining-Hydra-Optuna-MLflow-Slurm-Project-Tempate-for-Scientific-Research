@@ -68,18 +68,71 @@ def _build_checkpoint_callback(cfg: DictConfig, method_name: str, dataset_name: 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     dirpath = Path("checkpoints") / method_name / timestamp
 
-    # Filename template: {method}-{dataset}-{timestamp}-epoch={epoch:02d}-val={val_loss:.4f}
-    filename = f"{method_name}-{dataset_name}-{timestamp}-epoch={{epoch:02d}}-val={{val_loss:.4f}}"
+    monitor = cfg.experiment.monitor
+    mode = cfg.experiment.mode
+    # Filename template includes the monitored metric so the metric name and
+    # value are visible at a glance, e.g. "...-epoch=07-val_acc=0.9215".
+    filename = (
+        f"{method_name}-{dataset_name}-{timestamp}"
+        f"-epoch={{epoch:02d}}-{monitor}={{{monitor}:.4f}}"
+    )
 
     return ModelCheckpoint(
         dirpath=str(dirpath),
         filename=filename,
-        monitor="val_loss",
-        mode="min",
+        monitor=monitor,
+        mode=mode,
         save_last=True,
         save_top_k=3,
         verbose=True,
     )
+
+
+# Substrings that mark a metric name as loss-like. Conservative on purpose:
+# perplexity/ELBO are deliberately excluded — they are legitimate task
+# metrics in LM and VAE settings respectively.
+_LOSS_PATTERNS: tuple[str, ...] = ("loss", "nll")
+
+
+def _looks_like_loss(metric_name: str) -> bool:
+    """Heuristic: does this metric name describe a loss-like scalar?"""
+    name = metric_name.lower()
+    return any(tok in name for tok in _LOSS_PATTERNS)
+
+
+def _validate_experiment(cfg: DictConfig) -> None:
+    """Refuse to run if the experiment objective is mis-configured.
+
+    Hard rule (see .claude/global.md): loss is a training signal, not an
+    evaluation metric. It may serve as ``experiment.monitor`` only when
+    ``experiment.kind == "convergence"``. For ``evaluation`` / ``robust``
+    the monitor MUST be a real task metric (acc / F1 / AUROC / ECE / ...).
+    """
+    kind = OmegaConf.select(cfg, "experiment.kind", default=None)
+    monitor = OmegaConf.select(cfg, "experiment.monitor", default=None)
+    mode = OmegaConf.select(cfg, "experiment.mode", default=None)
+
+    if kind is None or monitor is None or mode is None:
+        raise ValueError(
+            "cfg.experiment.{kind,monitor,mode} must all be set. Add "
+            "`- experiment: <preset>` to the defaults list, or pass via CLI "
+            "(e.g. `experiment=evaluation`)."
+        )
+    if mode not in ("min", "max"):
+        raise ValueError(f"experiment.mode must be 'min' or 'max', got {mode!r}")
+    if kind not in ("convergence", "evaluation", "robust"):
+        raise ValueError(
+            f"experiment.kind must be one of "
+            f"('convergence', 'evaluation', 'robust'), got {kind!r}"
+        )
+    if kind != "convergence" and _looks_like_loss(monitor):
+        raise ValueError(
+            f"experiment.kind={kind!r} but monitor={monitor!r} looks like a "
+            "loss. Loss is permitted as the primary metric ONLY when "
+            "experiment.kind='convergence'. Pick a task metric (val_acc, "
+            "val_f1, val_auroc, ...) or switch the experiment kind. "
+            "See .claude/global.md → 'Evaluation metrics'."
+        )
 
 
 def _save_latest_record(ckpt_path: str, output_dir: str = ".") -> None:
@@ -131,15 +184,18 @@ def run_train(cfg: DictConfig) -> Dict[str, Any]:
     - Calls ``trainer.fit()``; calls ``trainer.test()`` if ``cfg.mode.run_test``
     - **Always** writes ``run_summary.json`` (9 canonical fields) regardless of
       success or failure, then re-raises any exception
-    - Returns callback_metrics dict with at least ``val_loss`` / ``val_acc``
+    - Returns the trainer ``callback_metrics`` dict (contents depend on what
+      the LitModule logs — at minimum ``cfg.experiment.monitor``)
 
     Summary fields
     --------------
     trial_id         : Optuna trial number if called from run_optuna, else None
     seed             : integer seed from cfg.seed
     params           : flat dict of model hyper-parameters from model.hparams
-    final_metric     : val_loss at the end of training (None on fast_dev_run)
-    best_metric      : best val_loss across all epochs (from RunTrackerCallback)
+    final_metric     : value of cfg.experiment.monitor at end of training
+                       (None on fast_dev_run or if not logged)
+    best_metric      : best value of cfg.experiment.monitor across all epochs
+                       (from RunTrackerCallback)
     convergence_step : first epoch where the metric crossed the threshold (None)
     status           : "completed" or "failed"
     wall_time        : total elapsed seconds (float)
@@ -149,6 +205,9 @@ def run_train(cfg: DictConfig) -> Dict[str, Any]:
     # Wall-clock start — captured before any work so it includes setup time
     # ------------------------------------------------------------------
     _wall_start = time.monotonic()
+
+    # Refuse mis-configured experiments before any expensive work happens.
+    _validate_experiment(cfg)
 
     pl.seed_everything(cfg.seed, workers=True)
 
@@ -183,14 +242,27 @@ def run_train(cfg: DictConfig) -> Dict[str, Any]:
     dataset_name = _get_name_from_target(cfg.dataset._target_, "dataset")
 
     # --- Callbacks ----------------------------------------------------------
+    # All selection surfaces (checkpoint, early-stop, tracker) read the same
+    # (monitor, mode) pair from cfg.experiment so they cannot drift apart.
+    monitor = cfg.experiment.monitor
+    mode = cfg.experiment.mode
+    patience = int(OmegaConf.select(cfg, "experiment.patience", default=10))
+    convergence_threshold = OmegaConf.select(
+        cfg, "experiment.convergence_threshold", default=None
+    )
+
     ckpt_callback = _build_checkpoint_callback(cfg, method_name, dataset_name)
     # RunTrackerCallback is a pure data accumulator — no I/O.
     # run_train reads its public attributes after fit() to build the summary.
-    tracker = RunTrackerCallback(monitor="val_loss", mode="min")
+    tracker = RunTrackerCallback(
+        monitor=monitor,
+        mode=mode,
+        convergence_threshold=convergence_threshold,
+    )
     callbacks = [
         ckpt_callback,
         LearningRateMonitor(logging_interval="epoch"),
-        EarlyStopping(monitor="val_loss", patience=10, mode="min"),
+        EarlyStopping(monitor=monitor, patience=patience, mode=mode),
         OOMHandler(),
         tracker,
     ]
@@ -259,7 +331,10 @@ def run_train(cfg: DictConfig) -> Dict[str, Any]:
         "trial_id": OmegaConf.select(cfg, "optuna._trial_id", default=None),
         "seed": int(cfg.seed),
         "params": _tracked_params,
-        "final_metric": metrics.get("val_loss"),
+        # final_metric / best_metric are sourced from cfg.experiment.monitor
+        # so the run summary speaks the same language as ModelCheckpoint,
+        # EarlyStopping and Optuna. Never val_loss by default.
+        "final_metric": metrics.get(monitor),
         "best_metric": tracker.best_value,
         "convergence_step": tracker.convergence_step,
         "status": _status,
@@ -288,7 +363,9 @@ def run_optuna(cfg: DictConfig) -> None:
     1. Suggests params from ``cfg.optuna.search_space``
     2. Injects the trial number as ``cfg.optuna._trial_id`` into a config copy
     3. Calls ``run_train`` with the patched copy (each trial → separate MLflow run)
-    4. Returns the scalar metric specified by ``cfg.optuna.metric``
+    4. Returns the scalar metric specified by ``cfg.optuna.metric`` (defaults to
+       ``cfg.experiment.monitor`` so Optuna optimises the same scalar as
+       ModelCheckpoint / EarlyStopping)
 
     After all trials complete, two summary files are written and uploaded to
     the active MLflow run (if any):
@@ -301,12 +378,26 @@ def run_optuna(cfg: DictConfig) -> None:
 
     optuna.logging.set_verbosity(optuna.logging.INFO)
 
+    # Validate experiment config up-front so a multi-trial run doesn't burn
+    # GPU time before discovering a typo'd monitor.
+    _validate_experiment(cfg)
+
     storage = OmegaConf.select(cfg, "optuna.storage")
     if storage in (None, "null", ""):
         storage = None
 
+    # Derive metric / direction from cfg.experiment when not explicitly
+    # overridden in cfg.optuna — keeps the search aligned with the
+    # experiment's primary metric by default.
+    metric_name = OmegaConf.select(cfg, "optuna.metric")
+    if metric_name in (None, "null", ""):
+        metric_name = cfg.experiment.monitor
+    direction = OmegaConf.select(cfg, "optuna.direction")
+    if direction in (None, "null", ""):
+        direction = "minimize" if cfg.experiment.mode == "min" else "maximize"
+
     study = optuna.create_study(
-        direction=cfg.optuna.direction,
+        direction=direction,
         study_name=cfg.optuna.study_name,
         storage=storage,
         load_if_exists=True,
@@ -333,8 +424,10 @@ def run_optuna(cfg: DictConfig) -> None:
             log.warning(f"Trial {trial.number} failed: {e}")
             raise optuna.TrialPruned()
 
-        metric_name = cfg.optuna.metric
-        return float(metrics.get(metric_name, float("inf")))
+        # Worst-case fallback respects direction so a missing metric never
+        # accidentally ranks as "best" in the study.
+        worst = float("inf") if direction == "minimize" else float("-inf")
+        return float(metrics.get(metric_name, worst))
 
     timeout = OmegaConf.select(cfg, "optuna.timeout")
     if timeout in (None, "null"):
@@ -377,8 +470,8 @@ def run_optuna(cfg: DictConfig) -> None:
     summary_path = Path("optuna_summary.json")
     summary = {
         "study_name": cfg.optuna.study_name,
-        "direction": cfg.optuna.direction,
-        "metric": cfg.optuna.metric,
+        "direction": direction,
+        "metric": metric_name,
         "best_value": study.best_value,
         "best_params": study.best_params,
         "n_trials": len(study.trials),

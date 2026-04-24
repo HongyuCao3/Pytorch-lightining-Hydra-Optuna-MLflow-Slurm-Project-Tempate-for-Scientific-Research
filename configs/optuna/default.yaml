@@ -1,6 +1,12 @@
 n_trials: 10
-direction: minimize
-metric: val_loss
+
+# metric / direction default to cfg.experiment.monitor / mode — the same
+# scalar used by ModelCheckpoint, EarlyStopping and run_summary. Override
+# here ONLY if the Optuna search should optimise a different scalar than
+# the experiment's primary metric (rare — usually a mistake).
+metric: null
+direction: null
+
 study_name: optuna_study
 storage: null   # e.g. "sqlite:///optuna.db" for RDB persistence
 timeout: null   # seconds; null = no timeout
