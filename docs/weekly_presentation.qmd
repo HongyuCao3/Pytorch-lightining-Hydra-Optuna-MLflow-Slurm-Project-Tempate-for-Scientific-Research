@@ -18,6 +18,10 @@ format:
 <!--
 USAGE
 - Replace every {{TOKEN}} placeholder; delete this comment when done.
+- REPORTING STANDARD (hard rule): every headline number is a held-out test task
+  metric as `mean ± std (n≥3 seeds)`, copied from a `mode=bench` run's
+  bench_summary.json. No single-seed numbers, no val_*, no loss, no mean rank,
+  no Optuna best_value. See .claude/global.md → 'Reporting standard'.
 - Slide bodies: 3–6 short bullets, ≤ 15 words each.
 - Speaker notes (::: {.notes}) follow this cadence:
     **Bold subheader** mirrors a slide bullet group.
@@ -71,7 +75,7 @@ USAGE
 
 - **Axes**: x = {{X_AXIS}}, y = {{Y_AXIS}}
 - **Colours**: {{COLOR_LEGEND_BLUE}} | {{COLOR_LEGEND_ORANGE}} | {{COLOR_LEGEND_GREY}}
-- **Headline number**: {{OUR_METHOD}} = {{VALUE}} ({{DELTA_VS_BASELINE}})
+- **Headline number**: {{OUR_METHOD}} = {{MEAN}} ± {{STD}} (n={{N}}) test {{TEST_METRIC}} ({{DELTA_VS_BASELINE}}) — from `bench_summary.json`
 
 ::: {.notes}
 **Reading the figure**

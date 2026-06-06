@@ -127,7 +127,28 @@ python -m src.main dataset=wine method=mlp
 python -m src.main dataset=wine method=linear
 ```
 
+### Reportable Number — Multi-seed Benchmark (`mode=bench`)
+
+The **only** sanctioned source of a number you put in a paper, slide, or weekly
+update. Trains the config under every seed in `cfg.experiment.seeds` (>= 3),
+runs the held-out test split each time, and aggregates
+`cfg.experiment.report_metric` (a `test_*` task metric) into a `mean ± std (n)`
+headline written to `bench_summary.json`. Single-seed `train`/`eval` runs and
+Optuna `best_value` are NOT reportable — see `.claude/global.md` →
+*Reporting standard*.
+
+```bash
+python -m src.main mode=bench dataset=wine method=mlp experiment=evaluation
+# → bench_summary.json::headline, e.g. "test_acc = 0.9701 ± 0.0086 (n=3)"
+
+# Override seeds or the reported metric:
+python -m src.main mode=bench experiment.seeds=[42,123,2024,7,99] experiment.report_metric=test_acc
+```
+
 ### Hyperparameter Search (Optuna)
+
+Tunes on the **validation** monitor (never on test). The selected config's
+reportable number still comes from a subsequent `mode=bench` run.
 
 ```bash
 python -m src.main mode=optuna dataset=wine method=mlp optuna.n_trials=20
@@ -197,6 +218,7 @@ pytest tests/ -v
 | 3 | Fast dev run | `python -m src.main mode=debug dataset=wine method=mlp` |
 | 4 | Full run (val_loss decreases) | `python -m src.main dataset=wine method=mlp` |
 | 5 | Optuna 3 trials | `python -m src.main mode=optuna optuna.n_trials=3` |
+| 5b | Reportable multi-seed bench | `python -m src.main mode=bench experiment.seeds=[42,123,7] trainer.max_epochs=5` |
 | 6 | Inference + visual analyzers | `python -m src.main mode=infer inference.checkpoint_path=<ckpt>` |
 | 7 | Post-hoc re-eval with new metrics | `python -m src.main mode=eval inference.checkpoint_path=<ckpt>` |
 | 8 | SLURM submit | `python -m src.main -m hydra/launcher=slurm ...` |

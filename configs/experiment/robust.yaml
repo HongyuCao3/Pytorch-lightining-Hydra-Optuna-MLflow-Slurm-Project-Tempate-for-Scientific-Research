@@ -6,9 +6,13 @@
 # files across seeds and reports median / IQR / significance tests instead
 # of a single point estimate.
 #
-# Use this preset when publishing a number with an error bar attached.
+# Use this preset when publishing a number with an error bar attached. The
+# canonical way to produce that error bar is `mode=bench`, which aggregates
+# `report_metric` across `seeds` into a `mean ± std` headline.
 kind: robust
 monitor: val_acc
 mode: max
 patience: 15
 convergence_threshold: null
+report_metric: test_acc
+seeds: [42, 123, 2024]

@@ -6,7 +6,7 @@ from typing import Optional
 import hydra
 from omegaconf import DictConfig
 
-from src.train import run_eval, run_infer, run_optuna, run_train
+from src.train import run_bench, run_eval, run_infer, run_optuna, run_train
 from src.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -18,6 +18,7 @@ def main(cfg: DictConfig) -> Optional[float]:
 
     Dispatch based on cfg.mode.name:
       train / debug  -> run_train
+      bench          -> run_bench      (multi-seed test mean ± std — reportable)
       optuna         -> run_optuna
       infer          -> run_infer      (visual artifacts)
       eval           -> run_eval       (scalar metrics, checkpoint re-eval)
@@ -33,6 +34,10 @@ def main(cfg: DictConfig) -> Optional[float]:
         monitor = cfg.experiment.monitor
         return float(metrics.get(monitor, 0.0))
 
+    elif mode == "bench":
+        run_bench(cfg)
+        return None
+
     elif mode == "optuna":
         run_optuna(cfg)
         return None
@@ -47,7 +52,7 @@ def main(cfg: DictConfig) -> Optional[float]:
 
     else:
         raise ValueError(
-            f"Unknown mode: {mode!r}. Choose from: train, debug, optuna, infer, eval."
+            f"Unknown mode: {mode!r}. Choose from: train, debug, bench, optuna, infer, eval."
         )
 
 

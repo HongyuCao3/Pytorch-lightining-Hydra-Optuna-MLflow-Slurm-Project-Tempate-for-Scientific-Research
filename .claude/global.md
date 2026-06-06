@@ -46,6 +46,29 @@
 - LR-scheduler `monitor` (e.g. `ReduceLROnPlateau`) is exempt — it is a
   local optimisation detail and may use loss freely.
 
+## Reporting standard (hard constraint)
+- The ONLY number that may be reported as a result — in a paper, slide, weekly
+  update, or any cross-method/cross-config comparison — is
+  `cfg.experiment.report_metric` (a held-out **test** task metric, `test_*`
+  prefix) averaged over `cfg.experiment.seeds` (>= 3 distinct seeds), quoted as
+  **`mean ± std (n)`**. This is exactly what `mode=bench` (`run_bench`) produces
+  in `bench_summary.json::headline`.
+- FORBIDDEN as a reported/compared headline number: a single-seed point
+  estimate; any `val_*` metric; any loss / NLL; a "mean rank" or other
+  cross-table ordinal; an Optuna `best_value` (that is a val number chosen on
+  the search split, for selection only). None of these are comparable across
+  methods or runs.
+- `run_bench` enforces this via `_validate_report(cfg)`: it refuses a
+  `report_metric` that is not `test_*` or that looks loss-like, and refuses
+  fewer than 3 distinct seeds. Do not work around the guard — fix the config.
+- A single `run_train` / `run_eval` produces a model and diagnostics, NOT a
+  reportable result. Tuning (`run_optuna`) selects a config on validation; the
+  selected config's reportable number still comes from a subsequent `mode=bench`
+  run. Selection (val) and reporting (test) stay decoupled — never tune on test.
+- `src/scripts/aggregate_runs.py --group-by ... --metric test_*` is the post-hoc
+  equivalent for sweeping a param across seeds; it aggregates a `test_*` metric
+  only, never `final_metric`.
+
 ## Tracking (hard constraints)
 - Every `run_train` call MUST write `run_summary.json` to the working directory
   AND upload it as a MLflow artifact under `summary/`, even on exception.

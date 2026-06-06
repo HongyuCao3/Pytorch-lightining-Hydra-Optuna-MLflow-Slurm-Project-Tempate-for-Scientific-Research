@@ -1,0 +1,9 @@
+# Benchmark mode: the ONLY sanctioned source of a reportable number.
+#
+# run_bench trains the same config under every seed in cfg.experiment.seeds,
+# runs the held-out test split each time, and aggregates
+# cfg.experiment.report_metric into a `mean ± std (n)` headline written to
+# bench_summary.json. Single-seed train/eval runs are NOT reportable.
+name: bench
+run_test: true
+fast_dev_run: false

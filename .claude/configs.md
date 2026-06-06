@@ -10,6 +10,7 @@ configs/
   logger/mlflow.yaml
   mode/debug.yaml      # fast_dev_run: true
   mode/train.yaml
+  mode/bench.yaml      # multi-seed test mean ± std (run_bench) — reportable
   mode/optuna.yaml
   mode/infer.yaml
   optuna/default.yaml
@@ -21,11 +22,17 @@ configs/
 ```
 
 ## experiment group (cfg.experiment)
-- Carries `kind`, `monitor`, `mode`, `patience`, `convergence_threshold`.
-- The `monitor` here is the single source of truth for ModelCheckpoint,
-  EarlyStopping, RunTrackerCallback, Optuna, and `run_summary.json`.
-- See `.claude/train.md` → *Experiment objective schema* and
-  `.claude/global.md` → *Evaluation metrics* for the rules.
+- Carries `kind`, `monitor`, `mode`, `patience`, `convergence_threshold`,
+  `report_metric`, `seeds`.
+- `monitor` (a `val_*` selection metric) is the single source of truth for
+  ModelCheckpoint, EarlyStopping, RunTrackerCallback, Optuna, and
+  `run_summary.json`.
+- `report_metric` (a `test_*` task metric) + `seeds` (>= 3 distinct) drive
+  `mode=bench` (`run_bench`), the only sanctioned source of a reportable
+  `mean ± std` number. Keep them decoupled from `monitor` — selection is on
+  val, reporting is on test.
+- See `.claude/train.md` → *Experiment objective schema* / *run_bench contract*
+  and `.claude/global.md` → *Evaluation metrics* / *Reporting standard*.
 
 ## method config requirements
 - `_target_`: full Python path to LitModule class.

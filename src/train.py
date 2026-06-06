@@ -3,6 +3,7 @@
 Public API
 ----------
 run_train(cfg)  -> Dict[str, Any]   train + test, return metrics
+run_bench(cfg)  -> Dict[str, Any]   multi-seed test-metric mean ± std (reportable)
 run_optuna(cfg) -> None             hyperparameter search with Optuna
 run_infer(cfg)  -> None             load checkpoint, run predict + analyzers
 
@@ -20,11 +21,12 @@ from __future__ import annotations
 
 import csv
 import json
+import statistics
 import time
 import traceback as tb_module
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import pytorch_lightning as pl
 from omegaconf import DictConfig, OmegaConf
@@ -132,6 +134,62 @@ def _validate_experiment(cfg: DictConfig) -> None:
             "experiment.kind='convergence'. Pick a task metric (val_acc, "
             "val_f1, val_auroc, ...) or switch the experiment kind. "
             "See .claude/global.md → 'Evaluation metrics'."
+        )
+
+
+def _validate_report(cfg: DictConfig) -> None:
+    """Refuse to produce a reportable number from a mis-specified basis.
+
+    Hard rule (see .claude/global.md → 'Reporting standard'): the only number
+    that may leave this project as a result — for a paper, slide, or weekly
+    report — is ``cfg.experiment.report_metric`` averaged over
+    ``cfg.experiment.seeds`` (>= 3 distinct seeds) on the held-out TEST split,
+    quoted as ``mean ± std``. This guard runs at the top of ``run_bench`` and
+    enforces that basis:
+
+    * ``report_metric`` must name a held-out test metric (``test_*`` prefix)
+      and must be a task metric, never a loss — a validation number or a loss
+      is not a comparable, reportable result.
+    * ``seeds`` must contain at least 3 distinct seeds — a single- or
+      double-seed point estimate has no usable error bar.
+    """
+    report_metric = OmegaConf.select(cfg, "experiment.report_metric", default=None)
+    seeds = OmegaConf.select(cfg, "experiment.seeds", default=None)
+
+    if report_metric is None or seeds is None:
+        raise ValueError(
+            "cfg.experiment.{report_metric,seeds} must both be set for bench "
+            "mode. Use an experiment preset that defines them (e.g. "
+            "`experiment=evaluation`)."
+        )
+
+    name = str(report_metric)
+    if not name.startswith("test_"):
+        raise ValueError(
+            f"experiment.report_metric={name!r} is not a held-out test metric. "
+            "Reportable numbers MUST come from the test split (a `test_*` key "
+            "such as test_acc / test_f1 / test_auroc). Validation metrics are "
+            "for model selection, not for reporting. "
+            "See .claude/global.md → 'Reporting standard'."
+        )
+    if _looks_like_loss(name):
+        raise ValueError(
+            f"experiment.report_metric={name!r} looks like a loss. A loss is "
+            "not a comparable evaluation result. Report a task metric "
+            "(test_acc / test_f1 / test_auroc / ...)."
+        )
+
+    seeds_list = list(seeds)
+    if len(seeds_list) < 3:
+        raise ValueError(
+            f"experiment.seeds has {len(seeds_list)} seed(s); reporting requires "
+            ">= 3 so a mean ± std has meaning. "
+            "See .claude/global.md → 'Reporting standard'."
+        )
+    if len({int(s) for s in seeds_list}) != len(seeds_list):
+        raise ValueError(
+            f"experiment.seeds must be distinct, got {seeds_list!r}. Duplicate "
+            "seeds reproduce the same run and fake an error bar."
         )
 
 
@@ -349,6 +407,123 @@ def run_train(cfg: DictConfig) -> Dict[str, Any]:
         raise _exc
 
     return metrics
+
+
+# ---------------------------------------------------------------------------
+# run_bench
+# ---------------------------------------------------------------------------
+
+def run_bench(cfg: DictConfig) -> Dict[str, Any]:
+    """Multi-seed benchmark — the only sanctioned source of a reportable number.
+
+    Trains the identical config under every seed in ``cfg.experiment.seeds``,
+    runs the held-out test split each time (``mode.run_test=true``), collects
+    ``cfg.experiment.report_metric`` from each run, and aggregates them into a
+    ``mean ± std (n)`` headline. A single ``run_train`` produces a model and a
+    val-driven ``run_summary.json``; it is NOT a reportable result. ``run_bench``
+    is.
+
+    Contract
+    --------
+    - ``_validate_experiment`` + ``_validate_report`` gate the run up-front, so
+      a mis-specified report metric or too-few seeds fails before any training.
+    - Each seed runs via ``run_train`` on a **copy** of cfg (seed patched in),
+      mirroring ``run_optuna``: each seed becomes its own MLflow run with its own
+      ``run_summary.json``; the canonical per-seed record lives in MLflow.
+    - Aggregation is over the held-out **test** metric only — validation numbers
+      and losses are refused by ``_validate_report``.
+
+    Outputs (written to the Hydra per-run dir, like ``optuna_summary.*``)
+    --------------------------------------------------------------------
+    * ``bench_summary.json`` — report_metric, seeds, per-seed values, mean, std,
+      n, and a ready-to-paste ``headline`` string.
+    * ``bench_summary.csv``  — one row per seed plus a final aggregate row.
+
+    Returns
+    -------
+    dict
+        The bench summary (same content as ``bench_summary.json``).
+    """
+    _validate_experiment(cfg)
+    _validate_report(cfg)
+
+    report_metric: str = str(cfg.experiment.report_metric)
+    seeds: List[int] = [int(s) for s in cfg.experiment.seeds]
+
+    log.info(
+        f"Benchmark start | report_metric={report_metric} | seeds={seeds}"
+    )
+
+    per_seed: Dict[str, Optional[float]] = {}
+    values: List[float] = []
+    for seed in seeds:
+        # Only modify a copy of cfg (never in-place) — same rule as run_optuna.
+        cfg_seed = OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
+        OmegaConf.update(cfg_seed, "seed", seed)
+        # Drive the full training loop with the test split enabled so the
+        # report_metric is actually produced.
+        OmegaConf.update(cfg_seed, "mode.name", "train")
+        OmegaConf.update(cfg_seed, "mode.run_test", True)
+        OmegaConf.update(cfg_seed, "mode.fast_dev_run", False)
+
+        log.info(f"Benchmark seed {seed}: training")
+        metrics = run_train(cfg_seed)
+
+        value = metrics.get(report_metric)
+        if value is None:
+            log.warning(
+                f"Seed {seed}: report_metric {report_metric!r} not found in "
+                f"run metrics {sorted(metrics)} — recorded as null."
+            )
+            per_seed[str(seed)] = None
+        else:
+            value = float(value)
+            per_seed[str(seed)] = value
+            values.append(value)
+
+    n = len(values)
+    mean = statistics.mean(values) if n > 0 else None
+    std = statistics.stdev(values) if n > 1 else None
+
+    if mean is not None and std is not None:
+        headline = f"{report_metric} = {mean:.4f} ± {std:.4f} (n={n})"
+    elif mean is not None:
+        headline = f"{report_metric} = {mean:.4f} (n={n}, std undefined)"
+    else:
+        headline = f"{report_metric} = unavailable (no successful seeds)"
+
+    summary: Dict[str, Any] = {
+        "report_metric": report_metric,
+        "seeds": seeds,
+        "per_seed": per_seed,
+        "mean": round(mean, 6) if mean is not None else None,
+        "std": round(std, 6) if std is not None else None,
+        "n": n,
+        "headline": headline,
+    }
+
+    summary_path = Path("bench_summary.json")
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    log.info(f"Bench JSON summary saved to {summary_path}")
+
+    csv_path = Path("bench_summary.csv")
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["seed", report_metric])
+        for seed in seeds:
+            v = per_seed[str(seed)]
+            writer.writerow([seed, "" if v is None else v])
+        writer.writerow([
+            "aggregate",
+            "" if mean is None else f"{mean:.6f}±{'' if std is None else f'{std:.6f}'}",
+        ])
+    log.info(f"Bench CSV summary saved to {csv_path}")
+
+    log_artifact_to_run(str(summary_path), tag="summary")
+    log_artifact_to_run(str(csv_path), tag="summary")
+
+    log.info(f"Benchmark complete | {headline}")
+    return summary
 
 
 # ---------------------------------------------------------------------------

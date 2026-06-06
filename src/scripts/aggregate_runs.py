@@ -18,14 +18,16 @@ Write to a custom output file::
         --experiment research-template \\
         --output results/all_runs.csv
 
-Multi-seed aggregation (group by a param, compute mean/std)::
+Multi-seed aggregation (group by a param, compute test-metric mean/std)::
 
     python -m src.scripts.aggregate_runs \\
         --experiment research-template \\
         --group-by method.learning_rate \\
+        --metric test_acc \\
         --output results/lr_sweep.csv
     # produces results/lr_sweep.csv  (per-run rows)
-    #          results/lr_sweep.grouped.csv  (aggregated rows)
+    #          results/lr_sweep.grouped.csv  (mean_test_acc / std_test_acc rows)
+    # For a single config's error bar, prefer `mode=bench` (writes bench_summary.json).
 
 Include failed runs::
 
@@ -178,8 +180,17 @@ def _write_grouped_csv(
     rows: List[Dict[str, Any]],
     group_by_param: str,
     output_path: str,
+    metric: str = "test_acc",
 ) -> None:
-    """Group rows by a param key and write mean/std of final_metric.
+    """Group rows by a param key and write mean/std of a held-out TEST metric.
+
+    Reporting standard (see .claude/global.md → 'Reporting standard'): a
+    comparable number is a held-out **test** task metric averaged across seeds,
+    never a validation metric or a loss. This aggregation therefore defaults to
+    the MLflow-logged ``test_acc`` (column ``metric.test_acc``), not the
+    val-driven ``summary.final_metric``. For the canonical single-config error
+    bar use ``mode=bench`` (``run_bench``), which writes ``bench_summary.json``
+    directly; this grouped CSV is for sweeping a param across seeds post-hoc.
 
     The grouped output is written to ``<output_path>.grouped.csv`` (the
     ``.grouped`` suffix is always appended, independent of the original
@@ -195,19 +206,30 @@ def _write_grouped_csv(
         absent it is added automatically.
     output_path:
         Base path for the grouped CSV; ``.grouped.csv`` is appended.
+    metric:
+        Held-out test metric name to aggregate (must be ``test_*``). Read from
+        the flat CSV column ``metric.<metric>``.
     """
+    if not metric.startswith("test_"):
+        raise SystemExit(
+            f"[aggregate_runs] --metric must be a held-out test metric "
+            f"(test_* prefix), got {metric!r}. Validation metrics and losses "
+            "are not reportable. See .claude/global.md → 'Reporting standard'."
+        )
+
     # Normalise the group-by key to include the "param." prefix
     if not group_by_param.startswith("param."):
         group_by_param = f"param.{group_by_param}"
 
+    value_key = f"metric.{metric}"
     groups: Dict[str, List[float]] = defaultdict(list)
     for row in rows:
         group_key = str(row.get(group_by_param, ""))
-        fm = row.get("summary.final_metric", "")
+        fm = row.get(value_key, "")
         try:
             groups[group_key].append(float(fm))
         except (TypeError, ValueError):
-            pass  # skip rows without a valid final_metric
+            pass  # skip rows without a valid test metric
 
     grouped_rows: List[Dict[str, Any]] = []
     for key, values in sorted(groups.items()):
@@ -218,8 +240,8 @@ def _write_grouped_csv(
             {
                 group_by_param: key,
                 "n_runs": n,
-                "mean_final_metric": round(mean, 6) if mean is not None else "",
-                "std_final_metric": round(std, 6) if std is not None else "",
+                f"mean_{metric}": round(mean, 6) if mean is not None else "",
+                f"std_{metric}": round(std, 6) if std is not None else "",
             }
         )
 
@@ -232,6 +254,7 @@ def aggregate_runs(
     tracking_uri: str = "mlruns",
     output: str = "runs_summary.csv",
     group_by: Optional[str] = None,
+    metric: str = "test_acc",
     status_filter: str = "FINISHED",
 ) -> None:
     """Fetch all MLflow runs from an experiment and write a summary CSV.
@@ -246,6 +269,8 @@ def aggregate_runs(
         Path for the output CSV file.
     group_by:
         Optional param name to group rows by (enables grouped CSV output).
+    metric:
+        Held-out test metric aggregated in the grouped CSV (``test_*`` prefix).
     status_filter:
         One of ``"FINISHED"``, ``"FAILED"``, or ``"ALL"`` (case-insensitive).
         Controls which runs are included.
@@ -293,7 +318,7 @@ def aggregate_runs(
     _write_csv(rows, output)
 
     if group_by and rows:
-        _write_grouped_csv(rows, group_by, output)
+        _write_grouped_csv(rows, group_by, output, metric=metric)
 
 
 # ---------------------------------------------------------------------------
@@ -331,6 +356,16 @@ def _parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--metric",
+        default="test_acc",
+        metavar="TEST_METRIC",
+        help=(
+            "Held-out test metric to aggregate in the grouped CSV (must be a "
+            "'test_*' key, e.g. 'test_acc'). Validation metrics and losses are "
+            "refused. Defaults to 'test_acc'."
+        ),
+    )
+    parser.add_argument(
         "--status-filter",
         default="FINISHED",
         choices=["FINISHED", "FAILED", "ALL"],
@@ -346,5 +381,6 @@ if __name__ == "__main__":
         tracking_uri=args.tracking_uri,
         output=args.output,
         group_by=args.group_by,
+        metric=args.metric,
         status_filter=args.status_filter,
     )

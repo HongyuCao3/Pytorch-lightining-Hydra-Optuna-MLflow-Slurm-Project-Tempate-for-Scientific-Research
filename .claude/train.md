@@ -7,15 +7,39 @@ Every `run_train` / `run_optuna` reads the same five fields:
 | field | meaning |
 |---|---|
 | `kind` | `convergence` \| `evaluation` \| `robust` |
-| `monitor` | logged metric key (drives `ModelCheckpoint`, `EarlyStopping`, `RunTrackerCallback`, Optuna, `run_summary.json::final_metric`, Hydra sweeper return value) |
+| `monitor` | logged metric key (drives `ModelCheckpoint`, `EarlyStopping`, `RunTrackerCallback`, Optuna, `run_summary.json::final_metric`, Hydra sweeper return value) — a **selection** metric, usually `val_*` |
 | `mode` | `min` or `max` |
 | `patience` | EarlyStopping patience in epochs |
 | `convergence_threshold` | first epoch crossing this is recorded as `convergence_step` (null = disabled) |
+| `report_metric` | held-out **test** task metric (`test_*`) that `run_bench` aggregates into the reportable `mean ± std`. Decoupled from `monitor` so selection (val) and reporting (test) never contaminate each other |
+| `seeds` | list of >= 3 distinct seeds `run_bench` iterates to build the error bar |
 
 `_validate_experiment(cfg)` is called at the top of `run_train` and
 `run_optuna`. It refuses any non-`convergence` kind whose `monitor` looks
 loss-like (`loss` / `nll` substrings). See `.claude/global.md` →
 *Evaluation metrics*.
+
+`_validate_report(cfg)` is called at the top of `run_bench`. It refuses a
+`report_metric` that is not `test_*` or that looks loss-like, and fewer than 3
+distinct `seeds`. See `.claude/global.md` → *Reporting standard*.
+
+## run_bench contract (the only reportable number)
+```python
+def run_bench(cfg: DictConfig) -> Dict[str, Any]:
+    # _validate_experiment + _validate_report
+    # for seed in cfg.experiment.seeds:
+    #     run_train on a *copy* of cfg (seed patched, mode.run_test=true)
+    #     collect cfg.experiment.report_metric from the returned metrics
+    # aggregate → mean ± std → bench_summary.json / .csv
+```
+- Mirrors `run_optuna`'s "modify a copy of cfg only" rule; each seed is its own
+  MLflow run with its own `run_summary.json`.
+- Aggregates the **test** metric only; val metrics and losses are refused.
+- Writes `bench_summary.json` (with a ready-to-paste `headline`) and
+  `bench_summary.csv` (per-seed rows + aggregate) to the Hydra run dir, and
+  uploads both under the MLflow `summary/` artifact path.
+- A single `run_train` is NOT a reportable result; `run_bench` is the only
+  sanctioned source. See `.claude/global.md` → *Reporting standard*.
 
 ## run_train contract
 ```python

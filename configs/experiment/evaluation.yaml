@@ -14,8 +14,18 @@
 # convergence_threshold:
 #          First epoch at which the metric crosses this threshold is recorded
 #          as `convergence_step` in run_summary.json. null = disabled.
+# report_metric:
+#          The held-out TEST metric that `mode=bench` (run_bench) aggregates
+#          into the reportable `mean ± std` number. MUST be a `test_*` task
+#          metric — never `val_*`, never a loss. Decoupled from `monitor` so
+#          selection (val) and reporting (test) never contaminate each other.
+# seeds:   The seeds run_bench iterates. >= 3 distinct seeds are required;
+#          fewer is refused by _validate_report. The reportable headline is
+#          report_metric averaged over these seeds with its std.
 kind: evaluation
 monitor: val_acc
 mode: max
 patience: 10
 convergence_threshold: null
+report_metric: test_acc
+seeds: [42, 123, 2024]

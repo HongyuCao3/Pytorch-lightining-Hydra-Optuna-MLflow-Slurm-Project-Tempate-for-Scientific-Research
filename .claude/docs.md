@@ -105,7 +105,12 @@ edge [color="#6c757d", penwidth=1.4]
 
 When experiment runs complete:
 1. Open the corresponding `experiments/*.qmd`
-2. Fill results into the Markdown table (mean ± std)
+2. Fill results into the Markdown table as **`mean ± std (n)`**, taken from a
+   held-out **test** task metric (`test_*`) over >= 3 seeds — i.e. the
+   `headline` / `mean` / `std` fields of a `mode=bench` run's
+   `bench_summary.json`. NEVER report a single-seed number, a `val_*` metric, a
+   loss, a "mean rank", or an Optuna `best_value`. See `.claude/global.md` →
+   *Reporting standard*.
 3. Update the Claim Status Tracker in `claims.qmd`
 4. Update the Key Results metrics in `index.qmd`
 

@@ -6,8 +6,13 @@
 # Set `convergence_threshold` to the loss value below which you consider the
 # run converged. The first epoch that crosses it is recorded as
 # `convergence_step` in run_summary.json.
+# Even though selection here is loss-driven, any number reported from a
+# convergence study still goes through `mode=bench` and must be a held-out
+# test task metric — hence report_metric stays `test_acc`, not a loss.
 kind: convergence
 monitor: val_loss
 mode: min
 patience: 10
 convergence_threshold: null
+report_metric: test_acc
+seeds: [42, 123, 2024]

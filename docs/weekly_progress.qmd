@@ -15,6 +15,12 @@ format:
 Replace every `{{TOKEN}}` placeholder and every italicised guidance line.
 Keep bullets ≤ 15 words, one idea per bullet (see [.claude/docs.md](../.claude/docs.md) §Writing Style).
 Slide-deck companion: [weekly_presentation.qmd](weekly_presentation.qmd).
+
+**Reporting standard (hard rule):** every `{{VALUE}}` in a metric table is a
+held-out **test** task metric as `mean ± std (n≥3 seeds)`, copied from a
+`mode=bench` run's `bench_summary.json`. No single-seed numbers, no `val_*`, no
+loss, no mean rank, no Optuna `best_value`. See
+[.claude/global.md](../.claude/global.md) → *Reporting standard*.
 :::
 
 ## TL;DR
@@ -29,13 +35,13 @@ Slide-deck companion: [weekly_presentation.qmd](weekly_presentation.qmd).
 
 *Objective: one sentence stating what this finding answers.*
 
-*Setup: dataset, model, budget, evaluation metric — one line.*
+*Setup: dataset, model, budget, test metric + seed count — one line.*
 
-| {{COL_METHOD}} | {{COL_METRIC}} (↑) | Δ vs {{BASELINE}} |
+| {{COL_METHOD}} | {{COL_TEST_METRIC}} mean ± std (n) ↑ | Δ vs {{BASELINE}} |
 |---|:---:|:---:|
-| **{{OUR_METHOD}}** | **{{VALUE}}** | **{{DELTA}}** |
-| {{BASELINE_A}} | {{VALUE}} | {{DELTA}} |
-| {{BASELINE_B}} | {{VALUE}} | {{DELTA}} |
+| **{{OUR_METHOD}}** | **{{MEAN}} ± {{STD}} (n={{N}})** | **{{DELTA}}** |
+| {{BASELINE_A}} | {{MEAN}} ± {{STD}} (n={{N}}) | {{DELTA}} |
+| {{BASELINE_B}} | {{MEAN}} ± {{STD}} (n={{N}}) | {{DELTA}} |
 
 *Takeaway: one sentence — what the table proves, disproves, or narrows.*
 
